@@ -1,0 +1,19 @@
+{
+  "name": "iris-gateway",
+  "version": "1.0.0",
+  "description": "统一 AI 网关，兼容 OpenAI 和 Anthropic API 协议，支持人格系统、记忆系统、感知能力，以及上游伪装功能。",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "opencode-ai": "^1.15.5"
+  }
+}

@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  iris-gateway:
+    build: .
+    container_name: iris-gateway
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - IRIS_HOST=0.0.0.0
+      - IRIS_PORT=8000
+      - IRIS_LOG_LEVEL=info
+      # 填入你的 API Key
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # 网关认证
+      - IRIS_API_KEYS=${IRIS_API_KEYS:-}
+      # 伪装配置
+      - CLAUDE_DISGUISE_ENABLED=${CLAUDE_DISGUISE_ENABLED:-false}
+      - OPENAI_DISGUISE_ENABLED=${OPENAI_DISGUISE_ENABLED:-false}
+    volumes:
+      - ./data:/app/data
+      - ./config/personas:/app/config/personas
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # 可选：Redis 服务（用于分布式记忆）
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: iris-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+
+# volumes:
+#   redis-data:
