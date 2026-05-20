@@ -28,11 +28,11 @@
 
 ## P3 - Configuration And Deployment
 
-- [ ] Move hard-coded model list into configuration.
-- [ ] Add client model alias mapping to upstream model ids.
-- [ ] Add configurable CORS origins.
-- [ ] Warn strongly or fail closed when production runs without `IRIS_API_KEYS`.
-- [ ] Run the Docker image as a non-root user.
+- [x] Move hard-coded model list into configuration.
+- [x] Add client model alias mapping to upstream model ids.
+- [x] Add configurable CORS origins.
+- [x] Warn strongly or fail closed when production runs without `IRIS_API_KEYS`.
+- [x] Run the Docker image as a non-root user.
 
 ## P4 - Engineering Quality
 

@@ -16,7 +16,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 创建数据目录
-RUN mkdir -p /app/data/memory
+RUN mkdir -p /app/data/memory \
+    && addgroup --system iris \
+    && adduser --system --ingroup iris iris \
+    && chown -R iris:iris /app
+
+USER iris
 
 # 暴露端口
 EXPOSE 8000

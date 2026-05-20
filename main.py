@@ -32,16 +32,6 @@ from api import openai, anthropic, health
 logger = logging.getLogger(__name__)
 
 
-# === 可用模型列表 ===
-AVAILABLE_MODELS = [
-    {"id": "gpt-4o", "display_name": "GPT-4o", "owned_by": "openai"},
-    {"id": "gpt-4o-mini", "display_name": "GPT-4o Mini", "owned_by": "openai"},
-    {"id": "claude-sonnet-4-20250514", "display_name": "Claude Sonnet 4", "owned_by": "anthropic"},
-    {"id": "claude-opus-4-20250514", "display_name": "Claude Opus 4", "owned_by": "anthropic"},
-    {"id": "claude-haiku-4-20250514", "display_name": "Claude Haiku 4", "owned_by": "anthropic"},
-]
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
@@ -54,6 +44,12 @@ async def lifespan(app: FastAPI):
     logger.info(f"Debug: {settings.iris_debug}")
     logger.info(f"Host: {settings.iris_host}:{settings.iris_port}")
     logger.info("=" * 60)
+
+    if not settings.api_key_list:
+        message = "IRIS_API_KEYS is empty; gateway requests will not require authentication"
+        if settings.is_production:
+            raise RuntimeError(f"{message}. Refusing to start in production.")
+        logger.warning(message)
 
     # 初始化协议转换器
     app.state.converter = ProtocolConverter()
@@ -119,6 +115,7 @@ async def lifespan(app: FastAPI):
         persona_loader=app.state.persona_loader,
         memory_manager=app.state.memory_manager,
         perception_analyzer=app.state.perception_analyzer,
+        model_aliases=settings.model_aliases,
     )
     logger.info("Core processor initialized")
 
@@ -140,8 +137,8 @@ async def lifespan(app: FastAPI):
     logger.info(f"OpenAI disguise: {'enabled' if openai_config.enabled else 'disabled'}")
 
     # 可用模型列表
-    app.state.available_models = AVAILABLE_MODELS
-    logger.info(f"Available models: {len(AVAILABLE_MODELS)}")
+    app.state.available_models = settings.available_models
+    logger.info(f"Available models: {len(settings.available_models)}")
 
     # 确保数据目录存在
     os.makedirs(os.path.dirname(settings.memory_db_path) or ".", exist_ok=True)
@@ -172,7 +169,7 @@ app = FastAPI(
 # === CORS ===
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -28,12 +28,14 @@ class CoreProcessor:
         persona_loader: PersonaLoader,
         memory_manager: Optional[MemoryManager] = None,
         perception_analyzer: Optional[PerceptionAnalyzer] = None,
+        model_aliases: Optional[Dict[str, str]] = None,
     ):
         self.dispatcher = dispatcher
         self.persona_loader = persona_loader
         self.persona_injector = PersonaInjector()
         self.memory_manager = memory_manager
         self.perception_analyzer = perception_analyzer
+        self.model_aliases = model_aliases or {}
 
     async def _prepare_request(
         self,
@@ -66,10 +68,13 @@ class CoreProcessor:
 
         # 6. 更新请求
         request_id = f"req-{uuid.uuid4().hex[:8]}"
+        model = self.model_aliases.get(request.model, request.model)
         processed_request = request.model_copy(update={
             "messages": messages,
             "session_id": session_id,
             "persona_id": persona_id,
+            "model": model,
+            "provider": self._infer_provider_from_model(model) if model != request.model else request.provider,
         })
         processed_request.metadata["request_id"] = request_id
 
@@ -148,3 +153,12 @@ class CoreProcessor:
     def _generate_session_id() -> str:
         """生成会话 ID"""
         return f"sess-{uuid.uuid4().hex[:16]}"
+
+    @staticmethod
+    def _infer_provider_from_model(model: Optional[str]):
+        """根据映射后的模型名推断 provider"""
+        from models.schemas import ProviderType
+
+        if model and any(kw in model.lower() for kw in ["claude", "anthropic"]):
+            return ProviderType.ANTHROPIC
+        return ProviderType.OPENAI

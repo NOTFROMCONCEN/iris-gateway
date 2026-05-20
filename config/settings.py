@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     iris_port: int = 8000
     iris_debug: bool = False
     iris_log_level: str = "info"
+    iris_environment: str = "development"  # development | production
+    cors_origins: str = "*"
 
     # === API 密钥 ===
     openai_api_key: Optional[str] = None
@@ -69,6 +71,18 @@ class Settings(BaseSettings):
     default_persona: str = "default"
     default_max_tokens: int = 4096
     default_temperature: float = 0.7
+    available_models: List[Dict[str, str]] = Field(default_factory=lambda: [
+        {"id": "gpt-4o", "display_name": "GPT-4o", "owned_by": "openai"},
+        {"id": "gpt-4o-mini", "display_name": "GPT-4o Mini", "owned_by": "openai"},
+        {"id": "claude-sonnet-4-20250514", "display_name": "Claude Sonnet 4", "owned_by": "anthropic"},
+        {"id": "claude-opus-4-20250514", "display_name": "Claude Opus 4", "owned_by": "anthropic"},
+        {"id": "claude-haiku-4-20250514", "display_name": "Claude Haiku 4", "owned_by": "anthropic"},
+    ])
+    model_aliases: Dict[str, str] = Field(default_factory=lambda: {
+        "claude-sonnet-4": "claude-sonnet-4-20250514",
+        "claude-opus-4": "claude-opus-4-20250514",
+        "claude-haiku-4": "claude-haiku-4-20250514",
+    })
 
     model_config = {
         "env_file": ".env",
@@ -82,6 +96,18 @@ class Settings(BaseSettings):
         if not self.iris_api_keys:
             return []
         return [k.strip() for k in self.iris_api_keys.split(",") if k.strip()]
+
+    @property
+    def cors_origin_list(self) -> List[str]:
+        """获取 CORS origin 列表"""
+        if not self.cors_origins:
+            return []
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def is_production(self) -> bool:
+        """是否生产环境"""
+        return self.iris_environment.lower() == "production"
 
 
 # 全局单例
