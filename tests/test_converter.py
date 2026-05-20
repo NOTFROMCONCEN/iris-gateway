@@ -31,6 +31,21 @@ class TestProtocolConverter:
         assert internal.temperature == 0.7
         assert internal.provider == ProviderType.OPENAI
 
+    def test_openai_to_internal_preserves_advanced_parameters(self):
+        """测试 OpenAI 高级参数进入内部 metadata"""
+        req = OpenAIChatRequest(
+            model="gpt-4o",
+            messages=[OpenAIMessage(role="user", content="Hello!")],
+            max_completion_tokens=256,
+            logit_bias={"42": -10},
+        )
+
+        internal = ProtocolConverter.openai_to_internal(req)
+
+        assert internal.max_tokens == 256
+        assert internal.metadata["max_completion_tokens"] == 256
+        assert internal.metadata["logit_bias"] == {"42": -10}
+
     def test_anthropic_to_internal(self):
         """测试 Anthropic 到内部格式转换"""
         req = AnthropicMessageRequest(

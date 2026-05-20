@@ -77,7 +77,10 @@ class OpenAIProvider(BaseProvider):
             "messages": messages,
         }
 
-        if request.max_tokens:
+        max_completion_tokens = request.metadata.get("max_completion_tokens")
+        if max_completion_tokens:
+            body["max_completion_tokens"] = max_completion_tokens
+        elif request.max_tokens:
             body["max_tokens"] = request.max_tokens
         if request.temperature is not None:
             body["temperature"] = request.temperature
@@ -92,7 +95,7 @@ class OpenAIProvider(BaseProvider):
             body["stop"] = stop
 
         # 处理额外参数
-        for key in ("presence_penalty", "frequency_penalty", "seed", "n", "response_format"):
+        for key in ("presence_penalty", "frequency_penalty", "seed", "n", "response_format", "logit_bias"):
             val = request.metadata.get(key)
             if val is not None:
                 body[key] = val

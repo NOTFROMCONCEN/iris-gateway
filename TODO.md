@@ -20,7 +20,7 @@
 
 ## P2 - Protocol Compatibility
 
-- [ ] Preserve OpenAI parameters such as `logit_bias` and `max_completion_tokens`.
+- [x] Preserve OpenAI parameters such as `logit_bias` and `max_completion_tokens`.
 - [ ] Support OpenAI tool call round trips more completely.
 - [ ] Support Anthropic `tool_use` and `tool_result` blocks more completely.
 - [ ] Make multimodal handling explicit: preserve supported blocks or return clear errors.

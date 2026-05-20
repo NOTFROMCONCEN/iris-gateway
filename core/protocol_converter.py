@@ -69,6 +69,8 @@ class ProtocolConverter:
                 "response_format": req.response_format,
                 "seed": req.seed,
                 "n": req.n,
+                "logit_bias": req.logit_bias,
+                "max_completion_tokens": req.max_completion_tokens,
             },
         )
 
