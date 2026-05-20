@@ -23,8 +23,8 @@
 - [x] Preserve OpenAI parameters such as `logit_bias` and `max_completion_tokens`.
 - [x] Support OpenAI tool call round trips more completely.
 - [x] Support Anthropic `tool_use` and `tool_result` blocks more completely.
-- [ ] Make multimodal handling explicit: preserve supported blocks or return clear errors.
-- [ ] Add conversion tests for tool and multimodal paths.
+- [x] Make multimodal handling explicit: preserve supported blocks or return clear errors.
+- [x] Add conversion tests for tool and multimodal paths.
 
 ## P3 - Configuration And Deployment
 

@@ -41,12 +41,19 @@ class ProtocolConverter:
         for msg in req.messages:
             role = ProtocolConverter._map_openai_role(msg.role)
             content = ProtocolConverter._extract_openai_content(msg.content)
+            metadata = {}
+            if msg.tool_calls:
+                metadata["tool_calls"] = msg.tool_calls
+            if msg.tool_call_id:
+                metadata["tool_call_id"] = msg.tool_call_id
+            content_blocks = ProtocolConverter._openai_content_blocks_to_dicts(msg.content)
+            if content_blocks and any(block.get("type") != "text" for block in content_blocks):
+                metadata["openai_content"] = content_blocks
             messages.append(Message(
                 role=role,
                 content=content,
                 name=msg.name,
-                metadata={"tool_calls": msg.tool_calls, "tool_call_id": msg.tool_call_id}
-                if msg.tool_calls or msg.tool_call_id else None,
+                metadata=metadata or None,
             ))
 
         # 推断 provider
@@ -358,6 +365,21 @@ class ProtocolConverter:
                     texts.append(block)
             return "\n".join(texts)
         return str(content)
+
+    @staticmethod
+    def _openai_content_blocks_to_dicts(content) -> Optional[List[Dict[str, Any]]]:
+        """保留 OpenAI 多模态内容块，供同协议上游请求使用"""
+        if not isinstance(content, list):
+            return None
+
+        blocks = []
+        for block in content:
+            if isinstance(block, dict):
+                blocks.append({k: v for k, v in block.items() if v is not None})
+            elif isinstance(block, str):
+                blocks.append({"type": "text", "text": block})
+
+        return blocks or None
 
     @staticmethod
     def _extract_anthropic_system(system) -> str:

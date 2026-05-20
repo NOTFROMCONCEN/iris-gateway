@@ -52,6 +52,51 @@ class TestProtocolConverter:
         assert internal.metadata["max_completion_tokens"] == 256
         assert internal.metadata["logit_bias"] == {"42": -10}
 
+    def test_openai_to_internal_preserves_multimodal_content_blocks(self):
+        """测试 OpenAI 多模态内容块不会被静默丢弃"""
+        content = [
+            {"type": "text", "text": "Describe this image."},
+            {"type": "image_url", "image_url": {"url": "data:image/png;base64,abc"}},
+        ]
+        req = OpenAIChatRequest(
+            model="gpt-4o",
+            messages=[OpenAIMessage(role="user", content=content)],
+        )
+
+        internal = ProtocolConverter.openai_to_internal(req)
+
+        assert internal.messages[0].content == "Describe this image."
+        assert internal.messages[0].metadata["openai_content"] == content
+
+    def test_anthropic_to_internal_preserves_image_blocks(self):
+        """测试 Anthropic 图片内容块进入内部 metadata"""
+        image_block = {
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/png",
+                "data": "abc",
+            },
+        }
+        req = AnthropicMessageRequest(
+            model="claude-sonnet-4-20250514",
+            messages=[
+                AnthropicMessage(
+                    role="user",
+                    content=[
+                        AnthropicTextContent(text="Describe this image."),
+                        image_block,
+                    ],
+                ),
+            ],
+            max_tokens=100,
+        )
+
+        internal = ProtocolConverter.anthropic_to_internal(req)
+
+        assert internal.messages[0].content == "Describe this image."
+        assert internal.messages[0].metadata["anthropic_content"][1] == image_block
+
     def test_anthropic_to_internal(self):
         """测试 Anthropic 到内部格式转换"""
         req = AnthropicMessageRequest(

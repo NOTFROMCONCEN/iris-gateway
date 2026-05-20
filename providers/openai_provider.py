@@ -58,9 +58,12 @@ class OpenAIProvider(BaseProvider):
         """将内部 ChatRequest 转换为 OpenAI API 请求体"""
         messages = []
         for msg in request.messages:
+            content = msg.content
+            if msg.metadata and msg.metadata.get("openai_content"):
+                content = msg.metadata["openai_content"]
             msg_dict: Dict[str, Any] = {
                 "role": msg.role.value,
-                "content": msg.content,
+                "content": content,
             }
             if msg.name:
                 msg_dict["name"] = msg.name

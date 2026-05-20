@@ -53,3 +53,26 @@ def test_openai_provider_parses_tool_calls_from_response():
     assert response.message.content == ""
     assert response.message.metadata["tool_calls"] == tool_calls
     assert response.message.metadata["finish_reason"] == "tool_calls"
+
+
+def test_openai_provider_builds_request_with_preserved_multimodal_content():
+    provider = OpenAIProvider(api_key="test-key")
+    content = [
+        {"type": "text", "text": "Describe this image."},
+        {"type": "image_url", "image_url": {"url": "data:image/png;base64,abc"}},
+    ]
+    request = ChatRequest(
+        model="gpt-4o",
+        provider=ProviderType.OPENAI,
+        messages=[
+            Message(
+                role=MessageRole.USER,
+                content="Describe this image.",
+                metadata={"openai_content": content},
+            )
+        ],
+    )
+
+    body = provider._build_request_body(request)
+
+    assert body["messages"][0]["content"] == content
