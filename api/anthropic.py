@@ -7,14 +7,16 @@
 import json
 import logging
 import uuid
-from typing import Optional
 
+import httpx
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from models.anthropic_schemas import AnthropicMessageRequest
+from models.schemas import ProviderType, StreamChunk
 from core.protocol_converter import ProtocolConverter
 from core.processor import CoreProcessor
+from utils.upstream_errors import build_upstream_http_exception
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +62,9 @@ async def anthropic_messages(
             anthropic_resp = converter.internal_to_anthropic_response(response)
             return JSONResponse(content=anthropic_resp.model_dump(exclude_none=True))
 
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Anthropic upstream HTTP error: {e.response.status_code} - {e.response.text}")
+        raise build_upstream_http_exception(e, "anthropic")
     except ValueError as e:
         logger.error(f"Provider error: {e}")
         raise HTTPException(status_code=502, detail="Upstream provider error. Please check your configuration.")
@@ -100,8 +105,18 @@ async def _anthropic_stream_generator(
         yield f"event: {block_start['event']}\ndata: {json.dumps(block_start['data'])}\n\n"
 
         # 流式内容
+        sent_stop = False
         async for chunk in processor.process_stream(internal_req, extra_headers=extra_headers):
             events = converter.internal_to_anthropic_stream_events(chunk)
+            for event in events:
+                if event["event"] == "message_stop":
+                    sent_stop = True
+                yield f"event: {event['event']}\ndata: {json.dumps(event['data'])}\n\n"
+
+        if not sent_stop:
+            events = converter.internal_to_anthropic_stream_events(
+                _build_fallback_stop_chunk(msg_id, model)
+            )
             for event in events:
                 yield f"event: {event['event']}\ndata: {json.dumps(event['data'])}\n\n"
 
@@ -112,3 +127,14 @@ async def _anthropic_stream_generator(
             "error": {"type": "internal_error", "message": str(e)},
         }
         yield f"event: error\ndata: {json.dumps(error_event)}\n\n"
+
+
+def _build_fallback_stop_chunk(msg_id: str, model: str) -> StreamChunk:
+    """构建缺失上游结束事件时的保底 stop chunk"""
+    return StreamChunk(
+        id=msg_id,
+        delta="",
+        provider=ProviderType.ANTHROPIC,
+        model=model,
+        finish_reason="stop",
+    )

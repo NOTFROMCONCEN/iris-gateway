@@ -49,16 +49,22 @@ class MemoryManager:
             short_term_task, summaries_task
         )
 
-        # 构建增强的消息列表
-        enhanced_messages = list(current_messages)
+        # 构建增强的消息列表：摘要 system 消息、短期历史、当前请求。
+        enhanced_messages = []
 
         # 如果有记忆摘要，插入为 system 消息
         if summaries:
             summary_text = self._build_summary_prompt(summaries)
-            enhanced_messages.insert(0, Message(
+            enhanced_messages.append(Message(
                 role=MessageRole.SYSTEM,
                 content=summary_text,
             ))
+
+        short_term_messages = self._memory_entries_to_messages(short_term)
+        enhanced_messages.extend(
+            self._filter_duplicate_messages(short_term_messages, current_messages)
+        )
+        enhanced_messages.extend(current_messages)
 
         return enhanced_messages, summaries
 
@@ -124,6 +130,35 @@ class MemoryManager:
                     parts.append(f"- {fact}")
                 parts.append("")
         return "\n".join(parts)
+
+    @staticmethod
+    def _memory_entries_to_messages(entries: List[MemoryEntry]) -> List[Message]:
+        """将短期记忆条目转换为可注入的消息"""
+        return [
+            Message(
+                role=entry.role,
+                content=entry.content,
+                metadata={"memory_entry_id": entry.id},
+                timestamp=entry.created_at,
+            )
+            for entry in entries
+        ]
+
+    @staticmethod
+    def _filter_duplicate_messages(
+        memory_messages: List[Message],
+        current_messages: List[Message],
+    ) -> List[Message]:
+        """避免当客户端已携带历史消息时重复注入相同内容"""
+        current_fingerprints = {
+            (message.role, message.content)
+            for message in current_messages
+        }
+        return [
+            message
+            for message in memory_messages
+            if (message.role, message.content) not in current_fingerprints
+        ]
 
     async def close(self):
         """关闭记忆管理器"""

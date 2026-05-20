@@ -146,9 +146,7 @@ class ProtocolConverter:
         delta = {}
         if chunk.delta:
             delta["content"] = chunk.delta
-        if chunk.finish_reason:
-            delta["finish_reason"] = chunk.finish_reason
-        else:
+        elif not chunk.finish_reason:
             delta["content"] = chunk.delta or ""
 
         choice = OpenAIChoice(
@@ -202,6 +200,10 @@ class ProtocolConverter:
             })
 
         if chunk.finish_reason:
+            output_tokens = 0
+            if chunk.usage:
+                output_tokens = chunk.usage.get("output_tokens", 0)
+
             # content_block_stop
             events.append({
                 "event": "content_block_stop",
@@ -222,7 +224,7 @@ class ProtocolConverter:
                         "stop_sequence": None,
                     },
                     "usage": {
-                        "output_tokens": 0,
+                        "output_tokens": output_tokens,
                     }
                 }
             })

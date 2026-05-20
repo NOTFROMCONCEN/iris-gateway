@@ -174,6 +174,7 @@ class StreamChunk(BaseModel):
     model: str
     finish_reason: Optional[str] = None
     perception: Optional[PerceptionResult] = None
+    usage: Optional[Dict[str, int]] = None
 
 
 class ErrorResponse(BaseModel):

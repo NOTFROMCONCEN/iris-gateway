@@ -210,12 +210,16 @@ class AnthropicProvider(BaseProvider):
             delta = event.get("delta", {})
             stop_reason = delta.get("stop_reason")
             if stop_reason:
+                usage = event.get("usage") or {}
                 yield StreamChunk(
                     id=msg_id,
                     delta="",
                     provider=ProviderType.ANTHROPIC,
                     model=model,
                     finish_reason=stop_reason,
+                    usage={
+                        "output_tokens": usage.get("output_tokens", 0),
+                    },
                 )
 
     async def health_check(self) -> bool:

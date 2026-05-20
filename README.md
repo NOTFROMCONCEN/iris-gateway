@@ -36,7 +36,18 @@ python main.py
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 4. 使用客户端连接
+### 4. 开发与测试
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest -q
+# 或
+npm test
+```
+
+测试配置固定只收集 `tests/`，避免外部嵌套仓库或运行时目录影响本项目测试。
+
+### 5. 使用客户端连接
 
 #### opencode 配置 (OpenAI 协议)
 
@@ -101,7 +112,10 @@ response_guidelines:
 
 ```bash
 docker-compose up -d
+docker compose ps
 ```
+
+Docker Compose 健康检查使用 Python 标准库访问 `/health`，不依赖镜像内额外安装 `curl`。部署前请在 `.env` 中配置上游 API Key 和 `IRIS_API_KEYS`，避免网关在公网环境下无认证暴露。
 
 ## 项目结构
 

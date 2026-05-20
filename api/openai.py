@@ -6,14 +6,15 @@
 
 import json
 import logging
-from typing import Optional
 
+import httpx
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from models.openai_schemas import OpenAIChatRequest
 from core.protocol_converter import ProtocolConverter
 from core.processor import CoreProcessor
+from utils.upstream_errors import build_upstream_http_exception
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,9 @@ async def openai_chat_completions(
             openai_resp = converter.internal_to_openai_response(response)
             return JSONResponse(content=openai_resp.model_dump(exclude_none=True))
 
+    except httpx.HTTPStatusError as e:
+        logger.error(f"OpenAI upstream HTTP error: {e.response.status_code} - {e.response.text}")
+        raise build_upstream_http_exception(e, "openai")
     except ValueError as e:
         logger.error(f"Provider error: {e}")
         raise HTTPException(status_code=502, detail="Upstream provider error. Please check your configuration.")
