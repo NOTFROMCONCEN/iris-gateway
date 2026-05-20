@@ -17,6 +17,8 @@ from models.openai_schemas import (
     OpenAIChoice, OpenAIUsage, OpenAIStreamChunk, OpenAIModelInfo,
     OpenAIModelListResponse,
 )
+from pydantic import BaseModel
+
 from models.anthropic_schemas import (
     AnthropicMessageRequest, AnthropicMessage, AnthropicSystemMessage,
     AnthropicMessageResponse, AnthropicContentBlock, AnthropicUsage,
@@ -94,7 +96,11 @@ class ProtocolConverter:
         for msg in req.messages:
             content = ProtocolConverter._extract_anthropic_content(msg.content)
             role = MessageRole.USER if msg.role == "user" else MessageRole.ASSISTANT
-            messages.append(Message(role=role, content=content))
+            metadata = None
+            content_blocks = ProtocolConverter._anthropic_content_blocks_to_dicts(msg.content)
+            if content_blocks and any(block.get("type") != "text" for block in content_blocks):
+                metadata = {"anthropic_content": content_blocks}
+            messages.append(Message(role=role, content=content, metadata=metadata))
 
         # 推断 provider
         provider = ProtocolConverter._infer_provider_from_model(req.model)
@@ -170,10 +176,19 @@ class ProtocolConverter:
     @staticmethod
     def internal_to_anthropic_response(resp: ChatResponse) -> AnthropicMessageResponse:
         """将内部 ChatResponse 转换为 Anthropic 响应格式"""
-        content_block = AnthropicContentBlock(
-            type="text",
-            text=resp.message.content,
-        )
+        metadata = resp.message.metadata or {}
+        if metadata.get("anthropic_content"):
+            content = [
+                AnthropicContentBlock(**block)
+                for block in metadata["anthropic_content"]
+            ]
+        else:
+            content = [
+                AnthropicContentBlock(
+                    type="text",
+                    text=resp.message.content,
+                )
+            ]
         usage = AnthropicUsage(
             input_tokens=resp.usage.get("prompt_tokens", 0),
             output_tokens=resp.usage.get("completion_tokens", 0),
@@ -181,8 +196,8 @@ class ProtocolConverter:
         return AnthropicMessageResponse(
             id=resp.id,
             model=resp.model,
-            content=[content_block],
-            stop_reason="end_turn",
+            content=content,
+            stop_reason=metadata.get("stop_reason", "end_turn"),
             usage=usage,
         )
 
@@ -369,12 +384,33 @@ class ProtocolConverter:
             for block in content:
                 if isinstance(block, AnthropicTextContent):
                     texts.append(block.text)
+                elif isinstance(block, AnthropicToolUseContent):
+                    texts.append(f"[tool_use:{block.name}]")
                 elif isinstance(block, dict) and block.get("type") == "text":
                     texts.append(block.get("text", ""))
+                elif isinstance(block, dict) and block.get("type") == "tool_use":
+                    texts.append(f"[tool_use:{block.get('name', '')}]")
+                elif isinstance(block, dict) and block.get("type") == "tool_result":
+                    texts.append(str(block.get("content", "")))
                 elif isinstance(block, str):
                     texts.append(block)
             return "\n".join(texts)
         return str(content)
+
+    @staticmethod
+    def _anthropic_content_blocks_to_dicts(content) -> Optional[List[Dict[str, Any]]]:
+        """保留 Anthropic 非文本内容块，供后续上游请求或响应使用"""
+        if not isinstance(content, list):
+            return None
+
+        blocks = []
+        for block in content:
+            if isinstance(block, BaseModel):
+                blocks.append(block.model_dump(exclude_none=True))
+            elif isinstance(block, dict):
+                blocks.append({k: v for k, v in block.items() if v is not None})
+
+        return blocks or None
 
     @staticmethod
     def _convert_anthropic_tools(tools: Optional[List]) -> Optional[List[Dict[str, Any]]]:

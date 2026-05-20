@@ -3,7 +3,13 @@
 import pytest
 from models.schemas import Message, MessageRole, ChatRequest, ChatResponse, ProviderType, StreamChunk
 from models.openai_schemas import OpenAIChatRequest, OpenAIMessage
-from models.anthropic_schemas import AnthropicMessageRequest, AnthropicMessage
+from models.anthropic_schemas import (
+    AnthropicMessageRequest,
+    AnthropicMessage,
+    AnthropicTextContent,
+    AnthropicToolResultContent,
+    AnthropicToolUseContent,
+)
 from core.protocol_converter import ProtocolConverter
 
 
@@ -63,6 +69,40 @@ class TestProtocolConverter:
         assert internal.messages[0].role == MessageRole.SYSTEM
         assert internal.messages[1].role == MessageRole.USER
         assert internal.provider == ProviderType.ANTHROPIC
+
+    def test_anthropic_to_internal_preserves_tool_blocks(self):
+        """测试 Anthropic 工具内容块进入内部 metadata"""
+        req = AnthropicMessageRequest(
+            model="claude-sonnet-4-20250514",
+            messages=[
+                AnthropicMessage(
+                    role="assistant",
+                    content=[
+                        AnthropicTextContent(text="I will look it up."),
+                        AnthropicToolUseContent(
+                            id="toolu_1",
+                            name="lookup",
+                            input={"q": "iris"},
+                        ),
+                    ],
+                ),
+                AnthropicMessage(
+                    role="user",
+                    content=[
+                        AnthropicToolResultContent(
+                            tool_use_id="toolu_1",
+                            content="result",
+                        ),
+                    ],
+                ),
+            ],
+            max_tokens=100,
+        )
+
+        internal = ProtocolConverter.anthropic_to_internal(req)
+
+        assert internal.messages[0].metadata["anthropic_content"][1]["type"] == "tool_use"
+        assert internal.messages[1].metadata["anthropic_content"][0]["type"] == "tool_result"
 
     def test_infer_provider_from_model(self):
         """测试模型名称推断 Provider"""
@@ -129,3 +169,31 @@ class TestProtocolConverter:
         assert result.choices[0].message.tool_calls == tool_calls
         assert result.choices[0].message.content is None
         assert result.choices[0].finish_reason == "tool_calls"
+
+    def test_internal_to_anthropic_response_preserves_tool_use_content(self):
+        """测试内部响应中的 Anthropic tool_use 内容块能输出"""
+        response = ChatResponse(
+            message=Message(
+                role=MessageRole.ASSISTANT,
+                content="",
+                metadata={
+                    "anthropic_content": [{
+                        "type": "tool_use",
+                        "id": "toolu_1",
+                        "name": "lookup",
+                        "input": {"q": "iris"},
+                    }],
+                    "stop_reason": "tool_use",
+                },
+            ),
+            provider=ProviderType.ANTHROPIC,
+            model="claude-sonnet-4",
+            persona_id="default",
+            session_id="session-1",
+        )
+
+        result = ProtocolConverter.internal_to_anthropic_response(response)
+
+        assert result.content[0].type == "tool_use"
+        assert result.content[0].name == "lookup"
+        assert result.stop_reason == "tool_use"

@@ -64,15 +64,21 @@ class AnthropicProvider(BaseProvider):
             if msg.role == MessageRole.SYSTEM:
                 system_text += msg.content + "\n"
             elif msg.role in (MessageRole.USER, MessageRole.ASSISTANT):
+                content = msg.content
+                if msg.metadata and msg.metadata.get("anthropic_content"):
+                    content = msg.metadata["anthropic_content"]
                 messages.append({
                     "role": "user" if msg.role == MessageRole.USER else "assistant",
-                    "content": msg.content,
+                    "content": content,
                 })
             elif msg.role == MessageRole.TOOL:
                 # 工具结果作为 user 消息
+                content = msg.content
+                if msg.metadata and msg.metadata.get("anthropic_content"):
+                    content = msg.metadata["anthropic_content"]
                 messages.append({
                     "role": "user",
-                    "content": msg.content,
+                    "content": content,
                 })
 
         body: Dict[str, Any] = {
@@ -173,14 +179,25 @@ class AnthropicProvider(BaseProvider):
     def _parse_response(self, data: Dict[str, Any], request: ChatRequest) -> ChatResponse:
         """解析 Anthropic 响应为内部格式"""
         content = ""
-        for block in data.get("content", []):
+        content_blocks = data.get("content", [])
+        for block in content_blocks:
             if block.get("type") == "text":
                 content += block.get("text", "")
+
+        metadata: Dict[str, Any] = {}
+        if content_blocks and any(block.get("type") != "text" for block in content_blocks):
+            metadata["anthropic_content"] = content_blocks
+        if data.get("stop_reason"):
+            metadata["stop_reason"] = data["stop_reason"]
 
         usage_data = data.get("usage", {})
         return ChatResponse(
             id=data.get("id", f"iris-{uuid.uuid4().hex[:12]}"),
-            message=Message(role=MessageRole.ASSISTANT, content=content),
+            message=Message(
+                role=MessageRole.ASSISTANT,
+                content=content,
+                metadata=metadata or None,
+            ),
             provider=ProviderType.ANTHROPIC,
             model=data.get("model", request.model),
             persona_id=request.persona_id or "default",
