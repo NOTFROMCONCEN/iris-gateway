@@ -10,7 +10,14 @@
 - **记忆系统**：SQLite 存储，短期记忆窗口 + 长期记忆摘要
 - **感知分析**：基于规则引擎的情绪、意图、关键词分析
 - **流式响应**：完整支持 SSE 流式代理 OpenAI 和 Anthropic 的 streaming
-- **多用户隔离**：API Key 认证 + 会话隔离
+- **多用户隔离**：API Key 认证 + 会话隔离基础能力
+
+## 当前实现状态
+
+- SQLite 记忆后端可用；Ombre-Brain 作为外部本地依赖接入。
+- Redis 依赖已预留，但 Redis 记忆后端尚未实现。
+- OpenAI/Anthropic 文本、工具内容块和同协议多模态内容块会尽量保留；跨协议多模态转换仍需扩展。
+- 认证当前基于 API Key 列表；尚未实现 API Key 到用户身份的持久映射。
 
 ## 快速开始
 
@@ -116,6 +123,10 @@ docker compose ps
 ```
 
 Docker Compose 健康检查使用 Python 标准库访问 `/health`，不依赖镜像内额外安装 `curl`。部署前请在 `.env` 中配置上游 API Key 和 `IRIS_API_KEYS`，避免网关在公网环境下无认证暴露。
+
+## 外部依赖
+
+`external/ombre-brain/` 是本地外部仓库目录，已被 `.gitignore` 排除，不会随 Iris Gateway 提交。需要 Ombre-Brain 后端时，请单独 clone 或复制该仓库到此路径，并自行记录使用的版本。
 
 ## 项目结构
 

@@ -36,8 +36,8 @@
 
 ## P4 - Engineering Quality
 
-- [ ] Add linting, for example `ruff`.
-- [ ] Add a CI workflow.
-- [ ] Add a mock provider test path that avoids real upstream APIs.
-- [ ] Document how `external/ombre-brain` should be cloned or pinned.
-- [ ] Reconcile README claims with the currently implemented backend support.
+- [x] Add linting, for example `ruff`.
+- [x] Add a CI workflow.
+- [x] Add a mock provider test path that avoids real upstream APIs.
+- [x] Document how `external/ombre-brain` should be cloned or pinned.
+- [x] Reconcile README claims with the currently implemented backend support.
