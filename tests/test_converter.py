@@ -1,7 +1,7 @@
 """Iris AI Gateway - 协议转换器测试"""
 
 import pytest
-from models.schemas import Message, MessageRole, ChatRequest, ProviderType, StreamChunk
+from models.schemas import Message, MessageRole, ChatRequest, ChatResponse, ProviderType, StreamChunk
 from models.openai_schemas import OpenAIChatRequest, OpenAIMessage
 from models.anthropic_schemas import AnthropicMessageRequest, AnthropicMessage
 from core.protocol_converter import ProtocolConverter
@@ -101,3 +101,31 @@ class TestProtocolConverter:
 
         assert message_delta["data"]["usage"]["output_tokens"] == 12
         assert events[-1]["event"] == "message_stop"
+
+    def test_internal_to_openai_response_preserves_tool_calls(self):
+        """测试内部响应中的工具调用能输出为 OpenAI tool_calls"""
+        tool_calls = [{
+            "id": "call_1",
+            "type": "function",
+            "function": {"name": "lookup", "arguments": "{\"q\":\"iris\"}"},
+        }]
+        response = ChatResponse(
+            message=Message(
+                role=MessageRole.ASSISTANT,
+                content="",
+                metadata={
+                    "tool_calls": tool_calls,
+                    "finish_reason": "tool_calls",
+                },
+            ),
+            provider=ProviderType.OPENAI,
+            model="gpt-4o",
+            persona_id="default",
+            session_id="session-1",
+        )
+
+        result = ProtocolConverter.internal_to_openai_response(response)
+
+        assert result.choices[0].message.tool_calls == tool_calls
+        assert result.choices[0].message.content is None
+        assert result.choices[0].finish_reason == "tool_calls"

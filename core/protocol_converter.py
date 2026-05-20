@@ -122,14 +122,17 @@ class ProtocolConverter:
     @staticmethod
     def internal_to_openai_response(resp: ChatResponse) -> OpenAIChatResponse:
         """将内部 ChatResponse 转换为 OpenAI 响应格式"""
+        metadata = resp.message.metadata or {}
+        tool_calls = metadata.get("tool_calls")
         message = OpenAIMessage(
             role="assistant",
-            content=resp.message.content,
+            content=resp.message.content or None if tool_calls else resp.message.content,
+            tool_calls=tool_calls,
         )
         choice = OpenAIChoice(
             index=0,
             message=message,
-            finish_reason="stop",
+            finish_reason=metadata.get("finish_reason", "tool_calls" if tool_calls else "stop"),
         )
         usage = OpenAIUsage(
             prompt_tokens=resp.usage.get("prompt_tokens", 0),

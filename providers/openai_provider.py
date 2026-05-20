@@ -175,15 +175,25 @@ class OpenAIProvider(BaseProvider):
     def _parse_response(self, data: Dict[str, Any], request: ChatRequest) -> ChatResponse:
         """解析 OpenAI 响应为内部格式"""
         content = ""
+        metadata: Dict[str, Any] = {}
         choices = data.get("choices", [])
         if choices:
-            message = choices[0].get("message", {})
+            choice = choices[0]
+            message = choice.get("message", {})
             content = message.get("content", "") or ""
+            if message.get("tool_calls"):
+                metadata["tool_calls"] = message["tool_calls"]
+            if choice.get("finish_reason"):
+                metadata["finish_reason"] = choice["finish_reason"]
 
         usage_data = data.get("usage", {})
         return ChatResponse(
             id=data.get("id", f"iris-{uuid.uuid4().hex[:12]}"),
-            message=Message(role=MessageRole.ASSISTANT, content=content),
+            message=Message(
+                role=MessageRole.ASSISTANT,
+                content=content,
+                metadata=metadata or None,
+            ),
             provider=ProviderType.OPENAI,
             model=data.get("model", request.model),
             persona_id=request.persona_id or "default",
