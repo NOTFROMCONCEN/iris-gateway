@@ -2,7 +2,7 @@
 
 import pytest
 from models.schemas import Message, MessageRole, PersonaConfig
-from core.persona_injector import PersonaInjector
+from core.persona.injector import PersonaInjector
 
 
 class TestPersonaInjector:

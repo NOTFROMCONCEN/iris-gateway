@@ -16,6 +16,11 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       # 网关认证
       - IRIS_API_KEYS=${IRIS_API_KEYS:-}
+      # 记忆系统
+      - MEMORY_BACKEND=${MEMORY_BACKEND:-ombre}
+      # Ombre-Brain MCP 远程连接
+      - OMBRE_MCP_URL=${OMBRE_MCP_URL:-}
+      - OMBRE_MCP_TOKEN=${OMBRE_MCP_TOKEN:-}
       # 伪装配置
       - CLAUDE_DISGUISE_ENABLED=${CLAUDE_DISGUISE_ENABLED:-false}
       - OPENAI_DISGUISE_ENABLED=${OPENAI_DISGUISE_ENABLED:-false}

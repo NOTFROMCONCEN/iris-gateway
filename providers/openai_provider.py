@@ -6,7 +6,7 @@
 import logging
 import json
 import uuid
-from typing import AsyncIterator, Optional, Dict, Any
+from typing import AsyncIterator, Optional, Dict, Any, List
 
 import httpx
 
@@ -241,3 +241,27 @@ class OpenAIProvider(BaseProvider):
             return response.status_code == 200
         except Exception:
             return False
+
+    async def list_models(self) -> List[Dict[str, Any]]:
+        """获取 OpenAI 上游模型列表
+
+        OpenAI 兼容格式: data: [{id, owned_by, ...}]
+        """
+        try:
+            client = await self._get_client()
+            headers = self._build_headers()
+            response = await client.get("/v1/models", headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                models = data.get("data", [])
+                return [
+                    {
+                        "id": m.get("id", ""),
+                        "display_name": m.get("id", ""),
+                        "owned_by": m.get("owned_by", "openai"),
+                    }
+                    for m in models if m.get("id")
+                ]
+        except Exception as e:
+            logger.warning(f"Failed to list OpenAI models from {self.base_url}: {e}")
+        return []

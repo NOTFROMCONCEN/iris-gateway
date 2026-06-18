@@ -14,7 +14,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from models.openai_schemas import OpenAIChatRequest
 from core.protocol_converter import ProtocolConverter
 from core.processor import CoreProcessor
-from utils.upstream_errors import build_upstream_http_exception
+from config.settings import settings
+from providers.upstream_errors import build_upstream_http_exception
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +70,29 @@ async def openai_chat_completions(
 
 @router.get("/v1/models")
 async def openai_list_models(req: Request):
-    """OpenAI 模型列表端点"""
+    """OpenAI 模型列表端点
+
+    优先从上游 Provider 聚合获取模型列表；
+    若上游未配置或获取为空，回退到内置默认模型列表。
+    """
     converter: ProtocolConverter = req.app.state.converter
+
+    # 默认使用内置列表
     models = req.app.state.available_models
+
+    if (
+        settings.provider_model_discovery
+        and hasattr(req.app.state, "dispatcher")
+        and req.app.state.dispatcher
+    ):
+        try:
+            discovered = await req.app.state.dispatcher.list_all_models()
+            # 仅当上游确实返回了模型时才替换，避免空列表覆盖内置默认值
+            if discovered:
+                models = discovered
+        except Exception as e:
+            logger.warning(f"Provider model discovery failed, using defaults: {e}")
+
     response = converter.build_openai_model_list(models)
     return JSONResponse(content=response.model_dump())
 

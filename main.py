@@ -5,28 +5,15 @@
 """
 
 import logging
-import os
-import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config.settings import settings
-from utils.logging import setup_logging
-from core.protocol_converter import ProtocolConverter
-from core.persona_loader import PersonaLoader
-from core.perception_analyzer import PerceptionAnalyzer
-from core.processor import CoreProcessor
-from providers.dispatcher import ProviderDispatcher
-from disguise.claude_disguise import ClaudeCodeDisguise
-from disguise.openai_disguise import OpenAIDisguise
-from disguise.config import ClaudeCodeDisguiseConfig, OpenAIDisguiseConfig
-from memory.sqlite_backend import SQLiteMemoryBackend
-from memory.ombre_adapter import OmbreBrainBackend
-from memory.manager import MemoryManager
-from middleware.auth import AuthMiddleware
-from utils.exceptions import IrisGatewayError
+from bootstrap import bootstrap, shutdown
+from models.exceptions import IrisGatewayError
+from middleware import AuthMiddleware
 from api import openai, anthropic, health
 
 logger = logging.getLogger(__name__)
@@ -35,127 +22,9 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    # 启动
-    startup_start = time.monotonic()
-    setup_logging(settings.iris_log_level)
-    logger.info("=" * 60)
-    logger.info("Iris AI Gateway starting up...")
-    logger.info("Version: 0.1.0")
-    logger.info(f"Debug: {settings.iris_debug}")
-    logger.info(f"Host: {settings.iris_host}:{settings.iris_port}")
-    logger.info("=" * 60)
-
-    if not settings.api_key_list:
-        message = "IRIS_API_KEYS is empty; gateway requests will not require authentication"
-        if settings.is_production:
-            raise RuntimeError(f"{message}. Refusing to start in production.")
-        logger.warning(message)
-
-    # 初始化协议转换器
-    app.state.converter = ProtocolConverter()
-    logger.info("Protocol converter initialized")
-
-    # 初始化人格加载器
-    app.state.persona_loader = PersonaLoader(config_dir=settings.persona_config_dir)
-    personas = app.state.persona_loader.list_personas()
-    logger.info(f"Personas loaded: {[p['name'] for p in personas]}")
-
-    # 初始化记忆管理器
-    app.state.memory_manager = None
-    if settings.memory_backend == "sqlite":
-        backend = SQLiteMemoryBackend(db_path=settings.memory_db_path)
-        app.state.memory_manager = MemoryManager(
-            backend=backend,
-            max_short_term=settings.memory_max_short_term,
-            summary_threshold=settings.memory_summary_threshold,
-        )
-        logger.info(f"Memory manager initialized (SQLite: {settings.memory_db_path})")
-    elif settings.memory_backend == "ombre":
-        backend = OmbreBrainBackend(
-            buckets_dir=settings.ombre_buckets_dir,
-            dehydration_api_key=settings.ombre_dehydration_api_key,
-            dehydration_base_url=settings.ombre_dehydration_base_url,
-            dehydration_model=settings.ombre_dehydration_model,
-        )
-        app.state.memory_manager = MemoryManager(
-            backend=backend,
-            max_short_term=settings.memory_max_short_term,
-            summary_threshold=settings.memory_summary_threshold,
-        )
-        logger.info(f"Memory manager initialized (Ombre-Brain: {settings.ombre_buckets_dir})")
-    else:
-        logger.info("Memory manager disabled")
-
-    # 初始化感知分析器
-    app.state.perception_analyzer = None
-    if settings.perception_enabled:
-        app.state.perception_analyzer = PerceptionAnalyzer(
-            enabled=settings.perception_enabled,
-        )
-        logger.info("Perception analyzer initialized")
-    else:
-        logger.info("Perception analyzer disabled")
-
-    # 初始化 Provider 调度器
-    app.state.dispatcher = ProviderDispatcher(
-        anthropic_api_key=settings.anthropic_api_key,
-        anthropic_base_url=settings.anthropic_base_url,
-        anthropic_auth_header=settings.anthropic_auth_header,
-        openai_api_key=settings.openai_api_key,
-        openai_base_url=settings.openai_base_url,
-        openai_organization=settings.openai_organization,
-        timeout=settings.upstream_timeout,
-        max_retries=settings.upstream_max_retries,
-        retry_delay=settings.upstream_retry_delay,
-    )
-
-    # 初始化核心处理器
-    app.state.processor = CoreProcessor(
-        dispatcher=app.state.dispatcher,
-        persona_loader=app.state.persona_loader,
-        memory_manager=app.state.memory_manager,
-        perception_analyzer=app.state.perception_analyzer,
-        model_aliases=settings.model_aliases,
-    )
-    logger.info("Core processor initialized")
-
-    # 初始化伪装层
-    claude_config = ClaudeCodeDisguiseConfig(enabled=settings.claude_disguise_enabled)
-    if settings.claude_disguise_user_agent:
-        claude_config.user_agent = settings.claude_disguise_user_agent
-    if settings.claude_disguise_extra_headers:
-        claude_config.extra_headers = settings.claude_disguise_extra_headers
-    app.state.claude_disguise = ClaudeCodeDisguise(config=claude_config)
-    logger.info(f"Claude disguise: {'enabled' if claude_config.enabled else 'disabled'}")
-
-    openai_config = OpenAIDisguiseConfig(enabled=settings.openai_disguise_enabled)
-    if settings.openai_disguise_user_agent:
-        openai_config.user_agent = settings.openai_disguise_user_agent
-    if settings.openai_disguise_extra_headers:
-        openai_config.extra_headers = settings.openai_disguise_extra_headers
-    app.state.openai_disguise = OpenAIDisguise(config=openai_config)
-    logger.info(f"OpenAI disguise: {'enabled' if openai_config.enabled else 'disabled'}")
-
-    # 可用模型列表
-    app.state.available_models = settings.available_models
-    logger.info(f"Available models: {len(settings.available_models)}")
-
-    # 确保数据目录存在
-    os.makedirs(os.path.dirname(settings.memory_db_path) or ".", exist_ok=True)
-
-    startup_elapsed = time.monotonic() - startup_start
-    logger.info(f"Iris AI Gateway ready! (startup took {startup_elapsed:.2f}s)")
-    logger.info("=" * 60)
-
+    bootstrap(app)
     yield
-
-    # 关闭
-    logger.info("Shutting down Iris AI Gateway...")
-    if hasattr(app.state, "dispatcher"):
-        await app.state.dispatcher.close()
-    if hasattr(app.state, "memory_manager") and app.state.memory_manager:
-        await app.state.memory_manager.close()
-    logger.info("Goodbye!")
+    await shutdown(app)
 
 
 # === 创建 FastAPI 应用 ===
@@ -196,8 +65,6 @@ async def iris_error_handler(request, exc: IrisGatewayError):
             }
         },
     )
-
-
 
 
 # === 路由注册 ===

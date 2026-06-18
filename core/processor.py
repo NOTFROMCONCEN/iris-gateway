@@ -10,9 +10,9 @@ import uuid
 from typing import Optional, Dict, Any, AsyncIterator, Tuple
 
 from models.schemas import ChatRequest, ChatResponse, StreamChunk, Message, MessageRole, PerceptionResult
-from core.persona_loader import PersonaLoader
-from core.persona_injector import PersonaInjector
-from core.perception_analyzer import PerceptionAnalyzer
+from core.persona.loader import PersonaLoader
+from core.persona.injector import PersonaInjector
+from core.perception.analyzer import PerceptionAnalyzer
 from memory.manager import MemoryManager
 from providers.dispatcher import ProviderDispatcher
 
@@ -29,6 +29,7 @@ class CoreProcessor:
         memory_manager: Optional[MemoryManager] = None,
         perception_analyzer: Optional[PerceptionAnalyzer] = None,
         model_aliases: Optional[Dict[str, str]] = None,
+        model_providers: Optional[Dict[str, str]] = None,
     ):
         self.dispatcher = dispatcher
         self.persona_loader = persona_loader
@@ -36,6 +37,11 @@ class CoreProcessor:
         self.memory_manager = memory_manager
         self.perception_analyzer = perception_analyzer
         self.model_aliases = model_aliases or {}
+        self.model_providers = {
+            model: provider.lower()
+            for model, provider in (model_providers or {}).items()
+            if provider
+        }
 
     async def _prepare_request(
         self,
@@ -51,10 +57,12 @@ class CoreProcessor:
         if not persona:
             persona = self.persona_loader.get_default_persona()
 
-        # 3. 感知分析
+        # 3. 感知分析（跳过空消息或极短消息，减少不必要开销）
         perception = None
         if self.perception_analyzer:
-            perception = await self.perception_analyzer.analyze(request.messages)
+            last_msg = request.messages[-1] if request.messages else None
+            if last_msg and len(last_msg.content) > 3:
+                perception = await self.perception_analyzer.analyze(request.messages)
 
         # 4. 记忆检索与增强
         messages = list(request.messages)
@@ -69,17 +77,20 @@ class CoreProcessor:
         # 6. 更新请求
         request_id = f"req-{uuid.uuid4().hex[:8]}"
         model = self.model_aliases.get(request.model, request.model)
+        metadata = dict(request.metadata or {})
+        metadata["request_id"] = request_id
+
+        if perception:
+            metadata["perception"] = perception.model_dump()
+
         processed_request = request.model_copy(update={
             "messages": messages,
             "session_id": session_id,
             "persona_id": persona_id,
             "model": model,
-            "provider": self._infer_provider_from_model(model) if model != request.model else request.provider,
+            "provider": self._resolve_provider(model, request.provider),
+            "metadata": metadata,
         })
-        processed_request.metadata["request_id"] = request_id
-
-        if perception:
-            processed_request.metadata["perception"] = perception.model_dump()
 
         return processed_request, session_id, persona_id, perception
 
@@ -154,11 +165,25 @@ class CoreProcessor:
         """生成会话 ID"""
         return f"sess-{uuid.uuid4().hex[:16]}"
 
-    @staticmethod
-    def _infer_provider_from_model(model: Optional[str]):
-        """根据映射后的模型名推断 provider"""
+    def _resolve_provider(self, model: Optional[str], requested_provider):
+        """根据显式模型配置解析 provider，缺省时保留客户端选择。"""
         from models.schemas import ProviderType
 
-        if model and any(kw in model.lower() for kw in ["claude", "anthropic"]):
+        if model:
+            configured_provider = self.model_providers.get(model)
+            if configured_provider:
+                return ProviderType(configured_provider)
+
+        if requested_provider:
+            return requested_provider
+
+        return self._infer_provider_from_model(model)
+
+    @staticmethod
+    def _infer_provider_from_model(model: Optional[str]):
+        """根据模型名启发式推断 provider，作为显式配置缺失时的兜底。"""
+        from models.schemas import ProviderType
+
+        if model and any(kw in model.lower() for kw in ["claude", "anthropic", "kimi-for-coding"]):
             return ProviderType.ANTHROPIC
         return ProviderType.OPENAI

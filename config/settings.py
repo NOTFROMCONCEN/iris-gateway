@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     ombre_dehydration_base_url: Optional[str] = None
     ombre_dehydration_model: str = "deepseek-chat"
 
+    # === Ombre-Brain MCP 远程连接 ===
+    ombre_mcp_url: Optional[str] = None       # 远程 Ombre-Brain MCP 服务地址
+    ombre_mcp_token: Optional[str] = None      # MCP 认证 Token (Bearer)
+
     # === Redis ===
     redis_url: Optional[str] = None
 
@@ -67,21 +71,38 @@ class Settings(BaseSettings):
 
     # === 默认配置 ===
     default_provider: str = "openai"
-    default_model: str = "gpt-4o"
+    default_model: str = "kimi-for-coding"
     default_persona: str = "default"
     default_max_tokens: int = 4096
     default_temperature: float = 0.7
+
+    # === 模型发现 ===
+    # Kimi 的 OpenAI 兼容接口不支持 /v1/models，关闭自动发现
+    provider_model_discovery: bool = False
     available_models: List[Dict[str, str]] = Field(default_factory=lambda: [
-        {"id": "gpt-4o", "display_name": "GPT-4o", "owned_by": "openai"},
-        {"id": "gpt-4o-mini", "display_name": "GPT-4o Mini", "owned_by": "openai"},
-        {"id": "claude-sonnet-4-20250514", "display_name": "Claude Sonnet 4", "owned_by": "anthropic"},
-        {"id": "claude-opus-4-20250514", "display_name": "Claude Opus 4", "owned_by": "anthropic"},
-        {"id": "claude-haiku-4-20250514", "display_name": "Claude Haiku 4", "owned_by": "anthropic"},
+        {"id": "kimi-for-coding", "display_name": "Kimi for Coding", "owned_by": "kimi"},
+        {"id": "kimi-k2", "display_name": "Kimi K2", "owned_by": "kimi"},
+        {"id": "kimi-k2-0711", "display_name": "Kimi K2 (0711)", "owned_by": "kimi"},
+        {"id": "moonshot-v1-8k", "display_name": "Moonshot v1 8K", "owned_by": "kimi"},
+        {"id": "moonshot-v1-32k", "display_name": "Moonshot v1 32K", "owned_by": "kimi"},
+        {"id": "moonshot-v1-128k", "display_name": "Moonshot v1 128K", "owned_by": "kimi"},
     ])
     model_aliases: Dict[str, str] = Field(default_factory=lambda: {
-        "claude-sonnet-4": "claude-sonnet-4-20250514",
-        "claude-opus-4": "claude-opus-4-20250514",
-        "claude-haiku-4": "claude-haiku-4-20250514",
+        "coding": "kimi-for-coding",
+        "k2": "kimi-k2",
+        "k2-0711": "kimi-k2-0711",
+        "8k": "moonshot-v1-8k",
+        "32k": "moonshot-v1-32k",
+        "128k": "moonshot-v1-128k",
+    })
+    model_providers: Dict[str, str] = Field(default_factory=lambda: {
+        "kimi-for-coding": "anthropic",
+        "claude-sonnet-4-20250514": "anthropic",
+        "kimi-k2": "openai",
+        "kimi-k2-0711": "openai",
+        "moonshot-v1-8k": "openai",
+        "moonshot-v1-32k": "openai",
+        "moonshot-v1-128k": "openai",
     })
 
     model_config = {

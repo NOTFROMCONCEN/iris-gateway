@@ -17,8 +17,9 @@ def test_settings_parses_api_keys_and_cors_origins():
 def test_settings_exposes_model_configuration_defaults():
     settings = Settings(_env_file=None)
 
-    assert any(model["id"] == "gpt-4o" for model in settings.available_models)
-    assert settings.model_aliases["claude-sonnet-4"] == "claude-sonnet-4-20250514"
+    assert any(model["id"] == "kimi-for-coding" for model in settings.available_models)
+    assert settings.model_aliases["coding"] == "kimi-for-coding"
+    assert settings.model_providers["kimi-for-coding"] == "anthropic"
 
 
 def test_settings_detects_production_environment():

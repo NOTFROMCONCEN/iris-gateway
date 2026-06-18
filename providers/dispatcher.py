@@ -4,9 +4,10 @@
 支持请求追踪（request_id + 耗时统计）。
 """
 
+import asyncio
 import logging
 import time
-from typing import AsyncIterator, Optional, Dict, Any
+from typing import AsyncIterator, Optional, Dict, Any, List
 
 from models.schemas import ChatRequest, ChatResponse, StreamChunk, ProviderType
 from providers.base import BaseProvider
@@ -147,6 +148,40 @@ class ProviderDispatcher:
             except Exception:
                 results[ptype.value] = False
         return results
+
+    async def list_all_models(self) -> List[Dict[str, Any]]:
+        """聚合所有已配置上游 Provider 的模型列表
+
+        并行调用每个 Provider 的 list_models，去重后合并返回。
+        """
+        tasks = []
+        provider_names = []
+        for ptype, provider in self._providers.items():
+            tasks.append(provider.list_models())
+            provider_names.append(ptype.value)
+
+        if not tasks:
+            return []
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        seen = set()
+        models = []
+        for name, result in zip(provider_names, results):
+            if isinstance(result, Exception):
+                logger.warning(f"Failed to list models from {name}: {result}")
+                continue
+            for m in result:
+                model_id = m.get("id")
+                if not model_id or model_id in seen:
+                    continue
+                seen.add(model_id)
+                # 标记来源
+                m["owned_by"] = f"{name}/{m.get('owned_by', 'unknown')}"
+                models.append(m)
+
+        logger.info(f"Discovered {len(models)} models from {len(self._providers)} provider(s)")
+        return models
 
     async def close(self):
         """关闭所有 Provider"""

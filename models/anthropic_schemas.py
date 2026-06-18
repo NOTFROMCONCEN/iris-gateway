@@ -77,6 +77,12 @@ class AnthropicTool(BaseModel):
     input_schema: Dict[str, Any]
 
 
+class AnthropicThinkingConfig(BaseModel):
+    """Anthropic 思考模式配置"""
+    type: Literal["enabled"] = "enabled"
+    budget_tokens: int = 1024
+
+
 class AnthropicMessageRequest(BaseModel):
     """Anthropic Messages API 请求格式"""
     model: str = "claude-sonnet-4-20250514"
@@ -91,6 +97,7 @@ class AnthropicMessageRequest(BaseModel):
     top_k: Optional[int] = None
     tools: Optional[List[AnthropicTool]] = None
     tool_choice: Optional[Union[Literal["auto", "any", "none"], Dict[str, Any]]] = None
+    thinking: Optional[AnthropicThinkingConfig] = None
 
 
 # === 响应模型 ===

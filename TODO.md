@@ -41,3 +41,27 @@
 - [x] Add a mock provider test path that avoids real upstream APIs.
 - [x] Document how `external/ombre-brain` should be cloned or pinned.
 - [x] Reconcile README claims with the currently implemented backend support.
+
+## P5 - Directory Structure Optimization
+
+- [x] P0: Extract `main.py` initialization logic into `bootstrap.py`.
+- [x] P1: Split `core/` into sub-packages (`persona/`, `perception/`).
+- [x] P1: Move memory backends to `memory/backends/` sub-directory.
+- [x] P2: Relocate `utils/exceptions.py` → `models/exceptions.py`.
+- [x] P2: Relocate `utils/upstream_errors.py` → `providers/upstream_errors.py`.
+- [x] P2: Merge `disguise/` package into single `disguise.py` file.
+- [x] P2: Merge `middleware/` package into single `middleware.py` file.
+- [x] P2: Restructure `tests/` into sub-directories (`api/`, `core/`, `memory/`, `providers/`, `config/`).
+- [x] P3: Clean up root directory (move `opencode.json` to `scripts/`).
+- [x] Update all import references across the project.
+- [x] All 33 tests pass after refactoring.
+
+## P6 - 单用户多终端增强
+
+> 设计目标：单用户在不同 AI 客户端之间统一调用 AI，达成跨端统一记忆、MCP、SKILL。
+
+- [ ] **MCP 工具代理**：将 MCP (Model Context Protocol) 工具统一注册到网关，无论客户端使用 OpenAI 还是 Anthropic 协议，都能调用同一套工具。
+- [ ] **SKILL 系统**：可复用的技能定义和执行框架，跨客户端共享技能配置和执行结果。
+- [ ] **跨协议多模态转换**：OpenAI `image_url` ↔ Anthropic `image` block 互转，确保图片/文件在所有客户端都能正确传递。
+- [ ] **跨端会话恢复**：通过固定 session_id 或客户端标识，在不同客户端之间恢复同一会话上下文。
+- [ ] **统一记忆视图**：所有客户端共享同一记忆空间，在 Claude Code 中聊过的内容 opencode 也能回忆。

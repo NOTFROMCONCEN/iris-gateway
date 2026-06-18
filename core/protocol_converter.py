@@ -59,6 +59,31 @@ class ProtocolConverter:
         # 推断 provider
         provider = ProtocolConverter._infer_provider_from_model(req.model)
 
+        metadata = {
+            "source_format": "openai",
+            "stop": req.stop,
+            "presence_penalty": req.presence_penalty,
+            "frequency_penalty": req.frequency_penalty,
+            "user": req.user,
+            "tool_choice": req.tool_choice,
+            "response_format": req.response_format,
+            "seed": req.seed,
+            "n": req.n,
+            "logit_bias": req.logit_bias,
+            "max_completion_tokens": req.max_completion_tokens,
+        }
+
+        # 映射 OpenAI reasoning_effort → Anthropic thinking
+        if req.reasoning_effort:
+            effort_map = {"low": 512, "medium": 2048, "high": 8192}
+            if isinstance(req.reasoning_effort, str) and req.reasoning_effort in effort_map:
+                metadata["thinking"] = {
+                    "type": "enabled",
+                    "budget_tokens": effort_map[req.reasoning_effort],
+                }
+            elif isinstance(req.reasoning_effort, dict):
+                metadata["thinking"] = req.reasoning_effort
+
         return ChatRequest(
             messages=messages,
             model=req.model,
@@ -68,19 +93,7 @@ class ProtocolConverter:
             top_p=req.top_p,
             stream=req.stream,
             tools=req.tools,
-            metadata={
-                "source_format": "openai",
-                "stop": req.stop,
-                "presence_penalty": req.presence_penalty,
-                "frequency_penalty": req.frequency_penalty,
-                "user": req.user,
-                "tool_choice": req.tool_choice,
-                "response_format": req.response_format,
-                "seed": req.seed,
-                "n": req.n,
-                "logit_bias": req.logit_bias,
-                "max_completion_tokens": req.max_completion_tokens,
-            },
+            metadata=metadata,
         )
 
     # === Anthropic → 内部格式 ===
@@ -112,6 +125,16 @@ class ProtocolConverter:
         # 推断 provider
         provider = ProtocolConverter._infer_provider_from_model(req.model)
 
+        metadata = {
+            "source_format": "anthropic",
+            "stop_sequences": req.stop_sequences,
+            "top_k": req.top_k,
+            "tool_choice": req.tool_choice,
+            "metadata": req.metadata,
+        }
+        if req.thinking:
+            metadata["thinking"] = req.thinking.model_dump()
+
         return ChatRequest(
             messages=messages,
             model=req.model,
@@ -121,13 +144,7 @@ class ProtocolConverter:
             top_p=req.top_p,
             stream=req.stream,
             tools=ProtocolConverter._convert_anthropic_tools(req.tools),
-            metadata={
-                "source_format": "anthropic",
-                "stop_sequences": req.stop_sequences,
-                "top_k": req.top_k,
-                "tool_choice": req.tool_choice,
-                "metadata": req.metadata,
-            },
+            metadata=metadata,
         )
 
     # === 内部格式 → OpenAI 响应 ===
@@ -167,9 +184,12 @@ class ProtocolConverter:
         elif not chunk.finish_reason:
             delta["content"] = chunk.delta or ""
 
+        if chunk.thinking:
+            delta["reasoning_content"] = chunk.thinking
+
         choice = OpenAIChoice(
             index=0,
-            delta=delta if chunk.delta or chunk.finish_reason else {},
+            delta=delta if chunk.delta or chunk.finish_reason or chunk.thinking else {},
             finish_reason=chunk.finish_reason,
         )
         return OpenAIStreamChunk(
@@ -461,7 +481,7 @@ class ProtocolConverter:
     def _infer_provider_from_model(model: str) -> ProviderType:
         """根据模型名称推断 Provider"""
         model_lower = model.lower()
-        if any(kw in model_lower for kw in ["claude", "anthropic"]):
+        if any(kw in model_lower for kw in ["claude", "anthropic", "kimi-for-coding"]):
             return ProviderType.ANTHROPIC
         return ProviderType.OPENAI
 

@@ -15,7 +15,7 @@ def client():
 @pytest.fixture
 def auth_headers():
     """认证头"""
-    return {"Authorization": "Bearer iris-test-key"}
+    return {"Authorization": "Bearer iris-key-1"}
 
 
 class TestHealthEndpoints:

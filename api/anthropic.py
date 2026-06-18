@@ -16,7 +16,7 @@ from models.anthropic_schemas import AnthropicMessageRequest
 from models.schemas import ProviderType, StreamChunk
 from core.protocol_converter import ProtocolConverter
 from core.processor import CoreProcessor
-from utils.upstream_errors import build_upstream_http_exception
+from providers.upstream_errors import build_upstream_http_exception
 
 logger = logging.getLogger(__name__)
 
@@ -78,12 +78,8 @@ async def anthropic_list_models(req: Request):
     """Anthropic 模型列表端点"""
     converter: ProtocolConverter = req.app.state.converter
     models = req.app.state.available_models
-    # 过滤只返回 Anthropic 模型
-    anthropic_models = [
-        m for m in models
-        if any(kw in m["id"].lower() for kw in ["claude", "anthropic"])
-    ]
-    response = converter.build_anthropic_model_list(anthropic_models)
+    # Iris 作为统一网关，不过滤模型，返回全部可用模型
+    response = converter.build_anthropic_model_list(models)
     return JSONResponse(content=response.model_dump())
 
 

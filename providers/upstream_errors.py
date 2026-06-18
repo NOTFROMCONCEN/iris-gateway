@@ -1,4 +1,4 @@
-"""上游错误转换工具"""
+"""Iris AI Gateway - 上游错误转换工具"""
 
 from typing import Any, Dict
 

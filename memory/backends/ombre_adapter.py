@@ -25,7 +25,7 @@ from models.schemas import MemoryEntry, MemorySummary, Message, MessageRole
 logger = logging.getLogger(__name__)
 
 # Ombre-Brain 模块路径（不污染 sys.path，避免 utils.py 冲突）
-_OMBRE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "external", "ombre-brain")
+_OMBRE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "external", "ombre-brain")
 _OMBRE_MODULES = {}  # 缓存已加载的模块
 _OMBRE_ORIGINAL_NAMES = ["utils", "bucket_manager", "dehydrator", "decay_engine"]
 _SAVED_MODULES = {}  # 保存被覆盖的原始模块

@@ -48,6 +48,8 @@ class AnthropicProvider(BaseProvider):
         """构建请求头"""
         headers = {
             "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+            "User-Agent": "RooCode/3.54.0",
             "anthropic-version": self.API_VERSION,
             self.auth_header: self.api_key or "",
         }
@@ -117,6 +119,11 @@ class AnthropicProvider(BaseProvider):
             if anthropic_tools:
                 body["tools"] = anthropic_tools
 
+        # 处理 thinking（推理模式）
+        thinking = request.metadata.get("thinking")
+        if thinking:
+            body["thinking"] = thinking
+
         return body
 
     async def chat(self, request: ChatRequest, extra_headers: Optional[Dict[str, str]] = None) -> ChatResponse:
@@ -157,8 +164,9 @@ class AnthropicProvider(BaseProvider):
                     if not line:
                         continue
 
-                    if line.startswith("data: "):
-                        data_str = line[6:]
+                    # Kimi 返回 data: 后可能没有空格，兼容处理
+                    if line.startswith("data:"):
+                        data_str = line[5:].strip()
                         if data_str == "[DONE]":
                             break
                         try:
@@ -222,6 +230,14 @@ class AnthropicProvider(BaseProvider):
                     provider=ProviderType.ANTHROPIC,
                     model=model,
                 )
+            elif delta.get("type") == "thinking_delta":
+                yield StreamChunk(
+                    id=msg_id,
+                    delta="",
+                    thinking=delta.get("thinking", ""),
+                    provider=ProviderType.ANTHROPIC,
+                    model=model,
+                )
 
         elif event_type == "message_delta":
             delta = event.get("delta", {})
@@ -257,3 +273,30 @@ class AnthropicProvider(BaseProvider):
             return response.status_code in (200, 400)  # 400 也说明连通
         except Exception:
             return False
+
+    async def list_models(self) -> List[Dict[str, Any]]:
+        """获取 Anthropic 上游模型列表
+
+        Anthropic 的 /v1/models 返回 OpenAI 兼容格式 (data: [{id, display_name, ...}])
+        """
+        try:
+            client = await self._get_client()
+            headers = self._build_headers()
+            response = await client.get("/v1/models", headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                models = data.get("data", [])
+                result = []
+                for m in models:
+                    model_id = m.get("id", "")
+                    if not model_id:
+                        continue
+                    result.append({
+                        "id": model_id,
+                        "display_name": m.get("display_name", model_id),
+                        "owned_by": m.get("created_by", "anthropic"),
+                    })
+                return result
+        except Exception as e:
+            logger.warning(f"Failed to list Anthropic models from {self.base_url}: {e}")
+        return []

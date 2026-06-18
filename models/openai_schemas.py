@@ -37,6 +37,7 @@ class OpenAIChatRequest(BaseModel):
     tool_choice: Optional[Union[str, Dict[str, Any]]] = None
     response_format: Optional[Dict[str, Any]] = None
     seed: Optional[int] = None
+    reasoning_effort: Optional[Union[Literal["low", "medium", "high"], Dict[str, Any]]] = None
 
 
 # === 响应模型 ===

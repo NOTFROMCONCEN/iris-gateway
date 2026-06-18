@@ -2,7 +2,7 @@
 
 import httpx
 
-from utils.upstream_errors import build_upstream_http_exception
+from providers.upstream_errors import build_upstream_http_exception
 
 
 def _status_error(status_code: int, body) -> httpx.HTTPStatusError:

@@ -6,7 +6,7 @@
 import abc
 import asyncio
 import logging
-from typing import AsyncIterator, Optional, Dict, Any
+from typing import AsyncIterator, Optional, Dict, Any, List
 
 import httpx
 
@@ -46,8 +46,9 @@ class BaseProvider(abc.ABC):
                 limits=httpx.Limits(
                     max_connections=100,
                     max_keepalive_connections=20,
-                    keepalive_expiry=60,
+                    keepalive_expiry=300,
                 ),
+                http2=True,
             )
         return self._client
 
@@ -100,6 +101,31 @@ class BaseProvider(abc.ABC):
     async def health_check(self) -> bool:
         """健康检查"""
         ...
+
+    async def list_models(self) -> List[Dict[str, Any]]:
+        """获取上游可用的模型列表
+
+        默认通过调用上游 /v1/models 端点获取。
+        子类可重写以适配不同 API 格式。
+        """
+        try:
+            client = await self._get_client()
+            headers = {"Authorization": f"Bearer {self.api_key or ''}"}
+            response = await client.get("/v1/models", headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                models = data.get("data", [])
+                return [
+                    {
+                        "id": m.get("id", ""),
+                        "display_name": m.get("id", ""),
+                        "owned_by": m.get("owned_by", "unknown"),
+                    }
+                    for m in models if m.get("id")
+                ]
+        except Exception as e:
+            logger.warning(f"Failed to list models from {self.base_url}: {e}")
+        return []
 
     async def close(self):
         """关闭 HTTP 客户端"""
