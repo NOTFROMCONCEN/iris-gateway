@@ -1,8 +1,8 @@
 """Iris AI Gateway - 配置管理"""
 
 from pydantic_settings import BaseSettings
-from pydantic import Field
-from typing import List, Optional, Dict
+from pydantic import Field, field_validator
+from typing import List, Optional, Dict, Literal
 
 
 class Settings(BaseSettings):
@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     iris_port: int = 8000
     iris_debug: bool = False
     iris_log_level: str = "info"
-    iris_environment: str = "development"  # development | production
+    iris_environment: Literal["development", "production"] = "development"
     cors_origins: str = "*"
 
     # === API 密钥 ===
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     iris_api_keys: str = ""  # 逗号分隔的 API Key 列表
 
     # === 记忆系统 ===
-    memory_backend: str = "sqlite"  # sqlite | ombre
+    memory_backend: Literal["sqlite", "ombre", "none"] = "sqlite"
     memory_db_path: str = "./data/memory/iris.db"
     memory_max_short_term: int = 20
     memory_summary_threshold: int = 10
@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     openai_disguise_extra_headers: Optional[Dict[str, str]] = None
 
     # === 默认配置 ===
-    default_provider: str = "openai"
+    default_provider: Literal["openai", "anthropic"] = "openai"
     default_model: str = "kimi-for-coding"
     default_persona: str = "default"
     default_max_tokens: int = 4096
@@ -128,7 +128,30 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         """是否生产环境"""
-        return self.iris_environment.lower() == "production"
+        return self.iris_environment == "production"
+
+    @field_validator("iris_environment", "memory_backend", "default_provider", mode="before")
+    @classmethod
+    def normalize_enum_strings(cls, value: str) -> str:
+        """允许环境变量使用大小写混合写法。"""
+        if isinstance(value, str):
+            return value.lower().strip()
+        return value
+
+    @field_validator("model_providers")
+    @classmethod
+    def normalize_model_providers(cls, value: Dict[str, str]) -> Dict[str, str]:
+        """规范化模型路由表，并拒绝未知 provider。"""
+        allowed = {"openai", "anthropic"}
+        normalized = {}
+        for model, provider in value.items():
+            provider_name = provider.lower().strip()
+            if provider_name not in allowed:
+                raise ValueError(
+                    f"model_providers[{model!r}] must be one of {sorted(allowed)}"
+                )
+            normalized[model] = provider_name
+        return normalized
 
 
 # 全局单例

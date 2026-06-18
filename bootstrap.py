@@ -43,6 +43,21 @@ def check_auth_config():
         logger.warning(message)
 
 
+def check_cors_config():
+    """检查 CORS 配置，生产环境禁止全开放。"""
+    if settings.is_production and "*" in settings.cors_origin_list:
+        raise RuntimeError("CORS_ORIGINS='*' is not allowed in production.")
+
+
+def check_provider_config():
+    """检查模型路由与已配置 Provider 是否匹配。"""
+    routed_providers = set(settings.model_providers.values())
+    if "openai" in routed_providers and not settings.openai_api_key:
+        logger.warning("model_providers routes models to OpenAI, but OPENAI_API_KEY is empty")
+    if "anthropic" in routed_providers and not settings.anthropic_api_key:
+        logger.warning("model_providers routes models to Anthropic, but ANTHROPIC_API_KEY is empty")
+
+
 def init_converter() -> ProtocolConverter:
     """初始化协议转换器"""
     converter = ProtocolConverter()
@@ -179,6 +194,8 @@ def bootstrap(app):
 
     init_logging()
     check_auth_config()
+    check_cors_config()
+    check_provider_config()
 
     app.state.converter = init_converter()
     app.state.persona_loader = init_persona_loader()

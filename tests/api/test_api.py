@@ -5,6 +5,16 @@ from fastapi.testclient import TestClient
 from main import app
 
 
+class FakeReadyDispatcher:
+    """避免 /ready 测试触发真实上游网络探测。"""
+
+    async def health_check(self):
+        return {"openai": True}
+
+    async def close(self):
+        return None
+
+
 @pytest.fixture
 def client():
     """创建测试客户端（带认证头）"""
@@ -29,12 +39,23 @@ class TestHealthEndpoints:
         assert data["name"] == "Iris AI Gateway"
 
     def test_health(self, client):
-        """测试健康检查"""
+        """测试轻量健康检查"""
         response = client.get("/health")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
         assert "version" in data
+        assert data["providers"] == {}
+
+    def test_ready(self, client):
+        """测试就绪检查"""
+        client.app.state.dispatcher = FakeReadyDispatcher()
+
+        response = client.get("/ready")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["providers"] == {"openai": True}
 
 
 class TestOpenAIEndpoints:

@@ -10,6 +10,7 @@ __pycache__
 
 data
 node_modules
+**/node_modules
 external/ombre-brain
 
 dist

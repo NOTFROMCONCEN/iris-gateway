@@ -89,6 +89,9 @@ graph TB
 ```
 iris-gateway/
 ├── main.py                          # FastAPI 入口
+├── bootstrap.py                     # 应用启动引导
+├── middleware.py                    # API Key 认证中间件
+├── disguise.py                      # 上游伪装层
 ├── config/
 │   ├── __init__.py
 │   ├── settings.py                  # Pydantic Settings 配置
@@ -98,7 +101,8 @@ iris-gateway/
 │   ├── __init__.py
 │   ├── schemas.py                   # 统一数据模型（已有）
 │   ├── openai_schemas.py            # OpenAI API 格式模型
-│   └── anthropic_schemas.py         # Anthropic API 格式模型
+│   ├── anthropic_schemas.py         # Anthropic API 格式模型
+│   └── exceptions.py                # 统一异常模型
 ├── api/
 │   ├── __init__.py
 │   ├── openai.py                    # OpenAI 兼容路由
@@ -106,45 +110,33 @@ iris-gateway/
 │   └── health.py                    # 健康检查路由
 ├── core/
 │   ├── __init__.py
+│   ├── processor.py                 # 核心处理管道
 │   ├── protocol_converter.py        # 协议转换器
-│   ├── persona_injector.py          # 人格注入器
-│   ├── session_manager.py           # 会话管理器
-│   └── perception_analyzer.py       # 感知分析器
+│   ├── persona/                     # 人格加载与注入
+│   └── perception/                  # 感知分析器
 ├── memory/
 │   ├── __init__.py
 │   ├── base.py                      # 记忆存储抽象接口
-│   ├── sqlite_backend.py            # SQLite 存储实现
-│   ├── redis_backend.py             # Redis 存储实现
-│   └── manager.py                   # 记忆管理器（窗口+检索+摘要）
+│   ├── manager.py                   # 记忆管理器（窗口+检索+摘要）
+│   └── backends/                    # SQLite / Ombre-Brain 后端
 ├── providers/
 │   ├── __init__.py
 │   ├── base.py                      # Provider 抽象接口
 │   ├── anthropic_provider.py        # Anthropic 上游 Provider
 │   ├── openai_provider.py           # OpenAI 上游 Provider
-│   └── dispatcher.py                # Provider 调度器
-├── disguise/
-│   ├── __init__.py
-│   ├── claude_disguise.py           # Claude Code 伪装
-│   ├── openai_disguise.py           # OpenAI 伪装
-│   └── config.py                    # 伪装配置
-├── middleware/
-│   ├── __init__.py
-│   └── auth.py                      # API Key 认证中间件
+│   ├── dispatcher.py                # Provider 调度器
+│   └── upstream_errors.py           # 上游错误转换
 ├── utils/
 │   ├── __init__.py
-│   ├── stream_handler.py            # SSE 流式处理工具
 │   └── logging.py                   # 日志配置
+├── deploy/                          # Dockerfile 和 Compose 配置
+├── scripts/                         # 启动脚本、opencode 配置与 npm 依赖
 ├── data/                            # 数据目录
 │   └── memory/
-├── tests/                           # 测试目录
-│   ├── __init__.py
-│   ├── test_api.py
-│   ├── test_converter.py
-│   └── test_memory.py
+├── tests/                           # 测试目录（api/core/memory/providers/config）
 ├── requirements.txt
-├── .env.example
-├── Dockerfile
-└── docker-compose.yml
+├── requirements-dev.txt
+└── .env.example
 ```
 
 ---

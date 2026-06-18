@@ -67,8 +67,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```bash
 pip install -r requirements-dev.txt
 python -m pytest -q
-# 或
-npm test
+# 可选：使用 scripts/ 下的 npm 包装命令
+cd scripts && npm test
 ```
 
 测试配置固定只收集 `tests/`，避免外部嵌套仓库或运行时目录影响本项目测试。
@@ -76,6 +76,13 @@ npm test
 ### 5. 使用客户端连接
 
 #### opencode 配置 (OpenAI 协议)
+
+如果使用仓库内置的 opencode 启动脚本，先安装脚本目录下的 npm 依赖：
+
+```bash
+cd scripts
+npm install
+```
 
 ```json
 {
@@ -113,7 +120,8 @@ claude
 | `GET /v1/models` | OpenAI | 模型列表 |
 | `POST /v1/messages` | Anthropic | Messages API（含流式） |
 | `GET /v1/models` | Anthropic | 模型列表 |
-| `GET /health` | - | 健康检查 |
+| `GET /health` | - | 轻量存活检查，不访问上游 |
+| `GET /ready` | - | 就绪检查，包含 Provider 状态 |
 
 ## 人格配置
 
@@ -137,11 +145,11 @@ response_guidelines:
 ## Docker 部署
 
 ```bash
-docker-compose up -d
-docker compose ps
+docker compose -f deploy/docker-compose.yml up -d
+docker compose -f deploy/docker-compose.yml ps
 ```
 
-Docker Compose 健康检查使用 Python 标准库访问 `/health`，不依赖镜像内额外安装 `curl`。部署前请在 `.env` 中配置上游 API Key 和 `IRIS_API_KEYS`，避免网关在公网环境下无认证暴露。
+Docker Compose 健康检查使用 Python 标准库访问轻量 `/health`，不依赖镜像内额外安装 `curl`，也不会因为上游 Provider 短暂不可用而重启容器。需要确认上游就绪状态时访问 `/ready`。部署前请在 `.env` 中配置上游 API Key 和 `IRIS_API_KEYS`，避免网关在公网环境下无认证暴露。
 
 ## 外部依赖
 
@@ -165,7 +173,8 @@ iris-gateway/
 │   └── backends/        # 存储后端 (SQLite, Ombre-Brain)
 ├── providers/           # 上游 Provider (OpenAI, Anthropic, 调度器)
 ├── utils/               # 日志等工具
-├── scripts/             # 启动脚本、客户端配置
+├── deploy/              # Dockerfile 和 Docker Compose 部署配置
+├── scripts/             # 启动脚本、客户端配置、opencode npm 依赖
 └── tests/               # 测试 (api/ core/ memory/ providers/ config/)
 ```
 

@@ -7,8 +7,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "python -m pytest tests -q",
-    "start": "python main.py"
+    "test": "cd .. && python -m pytest tests -q",
+    "start": "cd .. && python main.py"
   },
   "keywords": [],
   "author": "",

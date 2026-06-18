@@ -20,7 +20,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.api_keys: Set[str] = set(api_keys or [])
         # 精确匹配的公开路径
-        self.public_paths: Set[str] = {"/health", "/", "/docs", "/openapi.json", "/redoc"}
+        self.public_paths: Set[str] = {
+            "/health",
+            "/ready",
+            "/",
+            "/docs",
+            "/openapi.json",
+            "/redoc",
+        }
         # 前缀匹配的公开路径（静态资源等）
         self.public_prefixes: tuple = ("/docs/", "/redoc/", "/static/")
 

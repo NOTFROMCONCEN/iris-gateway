@@ -1,8 +1,8 @@
-version: '3.8'
-
 services:
   iris-gateway:
-    build: .
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
     container_name: iris-gateway
     restart: unless-stopped
     ports:
@@ -17,7 +17,7 @@ services:
       # 网关认证
       - IRIS_API_KEYS=${IRIS_API_KEYS:-}
       # 记忆系统
-      - MEMORY_BACKEND=${MEMORY_BACKEND:-ombre}
+      - MEMORY_BACKEND=${MEMORY_BACKEND:-sqlite}
       # Ombre-Brain MCP 远程连接
       - OMBRE_MCP_URL=${OMBRE_MCP_URL:-}
       - OMBRE_MCP_TOKEN=${OMBRE_MCP_TOKEN:-}
@@ -25,8 +25,8 @@ services:
       - CLAUDE_DISGUISE_ENABLED=${CLAUDE_DISGUISE_ENABLED:-false}
       - OPENAI_DISGUISE_ENABLED=${OPENAI_DISGUISE_ENABLED:-false}
     volumes:
-      - ./data:/app/data
-      - ./config/personas:/app/config/personas
+      - ../data:/app/data
+      - ../config/personas:/app/config/personas
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5).read()"]
       interval: 30s
