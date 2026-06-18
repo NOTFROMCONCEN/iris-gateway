@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Iris Gateway Admin</title>
+    <link rel="stylesheet" href="/admin/styles.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar" aria-label="后台导航">
+        <div class="brand">
+          <span class="brand-mark">IG</span>
+          <div>
+            <strong>Iris Gateway</strong>
+            <span>Admin Console</span>
+          </div>
+        </div>
+        <nav>
+          <a href="#overview">概览</a>
+          <a href="#models">模型</a>
+          <a href="#tester">请求测试</a>
+          <a href="#settings">配置</a>
+        </nav>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <h1>后台控制台</h1>
+            <p>查看网关状态、模型路由和基础请求链路。</p>
+          </div>
+          <button id="refreshButton" type="button">刷新</button>
+        </header>
+
+        <section id="overview" class="section">
+          <div class="section-title">
+            <h2>运行状态</h2>
+            <span id="lastUpdated">尚未刷新</span>
+          </div>
+          <div class="status-grid">
+            <article class="metric">
+              <span>存活</span>
+              <strong id="healthStatus">...</strong>
+              <small id="healthMeta">/health</small>
+            </article>
+            <article class="metric">
+              <span>就绪</span>
+              <strong id="readyStatus">...</strong>
+              <small id="readyMeta">/ready</small>
+            </article>
+            <article class="metric">
+              <span>记忆后端</span>
+              <strong id="memoryBackend">...</strong>
+              <small id="memoryMeta">短期窗口</small>
+            </article>
+            <article class="metric">
+              <span>认证</span>
+              <strong id="authStatus">...</strong>
+              <small>IRIS_API_KEYS</small>
+            </article>
+          </div>
+        </section>
+
+        <section id="models" class="section two-column">
+          <div class="panel">
+            <div class="section-title">
+              <h2>模型列表</h2>
+              <button id="loadModelsButton" type="button">读取模型</button>
+            </div>
+            <div id="modelList" class="list empty">输入 API Key 后读取模型。</div>
+          </div>
+
+          <div class="panel">
+            <h2>模型路由</h2>
+            <div id="routeList" class="route-list"></div>
+          </div>
+        </section>
+
+        <section id="tester" class="section">
+          <div class="section-title">
+            <h2>请求测试</h2>
+            <span>OpenAI Chat Completions</span>
+          </div>
+          <div class="tester-grid">
+            <label>
+              <span>API Key</span>
+              <input id="apiKeyInput" type="password" autocomplete="off" placeholder="iris-key-1">
+            </label>
+            <label>
+              <span>模型</span>
+              <input id="modelInput" type="text" value="kimi-k2">
+            </label>
+            <label class="wide">
+              <span>消息</span>
+              <textarea id="messageInput" rows="5">你好，简单介绍一下 Iris Gateway 的当前状态。</textarea>
+            </label>
+          </div>
+          <div class="actions">
+            <button id="saveKeyButton" type="button">保存 Key</button>
+            <button id="sendButton" type="button">发送测试</button>
+          </div>
+          <pre id="responseBox" class="response-box">等待请求...</pre>
+        </section>
+
+        <section id="settings" class="section two-column">
+          <div class="panel">
+            <h2>Provider</h2>
+            <dl class="kv">
+              <div><dt>OpenAI</dt><dd id="openaiConfigured">...</dd></div>
+              <div><dt>Anthropic</dt><dd id="anthropicConfigured">...</dd></div>
+              <div><dt>模型发现</dt><dd id="modelDiscovery">...</dd></div>
+            </dl>
+          </div>
+          <div class="panel">
+            <h2>服务配置</h2>
+            <dl class="kv">
+              <div><dt>环境</dt><dd id="environment">...</dd></div>
+              <div><dt>CORS</dt><dd id="corsOrigins">...</dd></div>
+              <div><dt>默认模型</dt><dd id="defaultModel">...</dd></div>
+            </dl>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/app.js"></script>
+  </body>
+</html>

@@ -58,6 +58,35 @@ class TestHealthEndpoints:
         assert data["providers"] == {"openai": True}
 
 
+class TestAdminUi:
+    """测试 Web UI 后台端点"""
+
+    def test_admin_page(self, client):
+        response = client.get("/admin")
+
+        assert response.status_code == 200
+        assert "Iris Gateway Admin" in response.text
+
+    def test_admin_assets(self, client):
+        css_response = client.get("/admin/styles.css")
+        js_response = client.get("/admin/app.js")
+
+        assert css_response.status_code == 200
+        assert "text/css" in css_response.headers["content-type"]
+        assert js_response.status_code == 200
+        assert "application/javascript" in js_response.headers["content-type"]
+
+    def test_admin_config_is_sanitized(self, client):
+        response = client.get("/admin/api/config")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["auth_required"] is True
+        assert "models" in data
+        assert "openai_api_key" not in response.text
+        assert "anthropic_api_key" not in response.text
+
+
 class TestOpenAIEndpoints:
     """测试 OpenAI 兼容端点"""
 

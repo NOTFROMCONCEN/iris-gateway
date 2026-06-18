@@ -23,13 +23,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self.public_paths: Set[str] = {
             "/health",
             "/ready",
+            "/admin",
             "/",
             "/docs",
             "/openapi.json",
             "/redoc",
         }
         # 前缀匹配的公开路径（静态资源等）
-        self.public_prefixes: tuple = ("/docs/", "/redoc/", "/static/")
+        self.public_prefixes: tuple = ("/admin/", "/docs/", "/redoc/", "/static/")
 
     def _is_public_path(self, path: str) -> bool:
         """检查路径是否为公开路由"""
