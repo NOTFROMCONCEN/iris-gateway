@@ -38,79 +38,199 @@ Continue (OpenAI协议)    ──┤      ↑
 | SKILL 系统 | 🔲 规划中 | 可复用的技能定义和执行框架 |
 | 跨协议多模态 | 🔲 规划中 | OpenAI ↔ Anthropic 图片/文件块互转 |
 
-## 快速开始
+## 安装
 
-### 1. 安装依赖
+### 1. 准备环境
 
-```bash
+- Python 3.11+
+- pip
+- 可选：Node.js 18+，仅在使用仓库内置 opencode 脚本时需要
+- 可选：Docker Desktop / Docker Compose，容器部署时需要
+
+### 2. 获取代码并安装 Python 依赖
+
+```powershell
+git clone https://github.com/NOTFROMCONCEN/iris-gateway.git
 cd iris-gateway
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-### 2. 配置环境变量
+开发或运行测试时安装开发依赖：
 
-```bash
-cp .env.example .env
-# 编辑 .env 填入你的上游 API Key
+```powershell
+python -m pip install -r requirements-dev.txt
 ```
 
-### 3. 启动服务
+### 3. 配置环境变量
 
-```bash
+```powershell
+Copy-Item .env.example .env
+```
+
+编辑 `.env`，至少配置：
+
+```env
+IRIS_API_KEYS=iris-key-1
+OPENAI_API_KEY=sk-your-openai-key
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
+```
+
+常用配置说明：
+
+| 配置 | 说明 |
+|------|------|
+| `IRIS_API_KEYS` | 访问 Iris Gateway 的客户端 API Key，多个值用逗号分隔 |
+| `OPENAI_API_KEY` | OpenAI 或 OpenAI 兼容上游 API Key |
+| `ANTHROPIC_API_KEY` | Anthropic 或 Anthropic 兼容上游 API Key |
+| `MEMORY_BACKEND` | 记忆后端，默认 `sqlite`，也可使用 `ombre` 或 `none` |
+| `MODEL_ALIASES` | 客户端模型别名到真实模型名的 JSON 映射 |
+| `MODEL_PROVIDERS` | 真实模型名到 `openai` / `anthropic` provider 的 JSON 映射 |
+
+## 启动
+
+### 本地启动
+
+```powershell
 python main.py
-# 或
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 4. 开发与测试
+开发模式可使用 uvicorn reload：
 
-```bash
-pip install -r requirements-dev.txt
-python -m pytest -q
-# 可选：使用 scripts/ 下的 npm 包装命令
-cd scripts && npm test
+```powershell
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-测试配置固定只收集 `tests/`，避免外部嵌套仓库或运行时目录影响本项目测试。
+Windows 下也可以使用启动脚本：
 
-### 5. 使用客户端连接
+```powershell
+.\scripts\start-gateway.bat
+```
 
-#### opencode 配置 (OpenAI 协议)
+启动后检查：
 
-如果使用仓库内置的 opencode 启动脚本，先安装脚本目录下的 npm 依赖：
+```powershell
+Invoke-RestMethod http://localhost:8000/health
+Invoke-RestMethod http://localhost:8000/ready
+```
 
-```bash
+### Docker 启动
+
+Docker 配置位于 `deploy/` 目录：
+
+```powershell
+docker compose -f deploy/docker-compose.yml up -d
+docker compose -f deploy/docker-compose.yml ps
+```
+
+停止服务：
+
+```powershell
+docker compose -f deploy/docker-compose.yml down
+```
+
+Docker Compose 健康检查使用轻量 `/health`，不会因为上游 Provider 短暂不可用而重启容器。需要确认上游就绪状态时访问 `/ready`。
+
+## 使用
+
+### OpenAI 兼容客户端
+
+将客户端的 OpenAI Base URL 指向：
+
+```text
+http://localhost:8000/v1
+```
+
+API Key 使用 `.env` 中配置的任意一个 `IRIS_API_KEYS`。
+
+最小请求示例：
+
+```powershell
+$headers = @{
+  Authorization = "Bearer iris-key-1"
+  "Content-Type" = "application/json"
+}
+
+$body = @{
+  model = "kimi-k2"
+  messages = @(
+    @{ role = "user"; content = "你好，介绍一下 Iris Gateway" }
+  )
+} | ConvertTo-Json -Depth 10
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8000/v1/chat/completions `
+  -Headers $headers `
+  -Body $body
+```
+
+### Anthropic 兼容客户端
+
+将 Anthropic Base URL 指向：
+
+```text
+http://localhost:8000
+```
+
+API Key 同样使用 `IRIS_API_KEYS`。
+
+Claude Code 可这样连接：
+
+```powershell
+$env:ANTHROPIC_BASE_URL = "http://localhost:8000"
+$env:ANTHROPIC_API_KEY = "iris-key-1"
+claude
+```
+
+### opencode
+
+仓库内置了 opencode 配置和启动脚本。首次使用先安装脚本目录下的 npm 依赖：
+
+```powershell
 cd scripts
 npm install
+cd ..
 ```
+
+启动 opencode：
+
+```powershell
+.\scripts\start-opencode.bat
+```
+
+配置文件位于 `scripts/opencode.json`，默认连接：
 
 ```json
 {
-  "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "iris": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Iris Gateway",
-      "options": {
-        "baseURL": "http://localhost:8000/v1",
-        "apiKey": "your-iris-api-key"
-      },
-      "models": {
-        "kimi-for-coding": { "name": "Kimi for Coding" },
-        "kimi-k2": { "name": "Kimi K2" }
-      }
-    }
-  }
+  "baseURL": "http://localhost:8000/v1",
+  "apiKey": "your-iris-api-key"
 }
 ```
 
-#### Claude Code 配置 (Anthropic 协议)
+### 健康检查与模型列表
 
-```bash
-export ANTHROPIC_BASE_URL=http://localhost:8000
-export ANTHROPIC_API_KEY=your-iris-api-key
-claude
+```powershell
+Invoke-RestMethod http://localhost:8000/health
+Invoke-RestMethod http://localhost:8000/ready
+Invoke-RestMethod http://localhost:8000/v1/models -Headers @{ Authorization = "Bearer iris-key-1" }
 ```
+
+`/health` 只表示进程存活；`/ready` 会检查 Provider 和记忆组件状态。
+
+## 开发与测试
+
+```powershell
+python -m pytest -q
+python -m ruff check .
+```
+
+也可以使用 `scripts/` 下的 npm 包装命令：
+
+```powershell
+npm --prefix scripts test
+```
+
+测试配置固定只收集 `tests/`，避免外部嵌套仓库或运行时目录影响本项目测试。
 
 ## API 端点
 
@@ -141,15 +261,6 @@ response_guidelines:
   - "提供可运行的代码示例"
   - "解释设计决策"
 ```
-
-## Docker 部署
-
-```bash
-docker compose -f deploy/docker-compose.yml up -d
-docker compose -f deploy/docker-compose.yml ps
-```
-
-Docker Compose 健康检查使用 Python 标准库访问轻量 `/health`，不依赖镜像内额外安装 `curl`，也不会因为上游 Provider 短暂不可用而重启容器。需要确认上游就绪状态时访问 `/ready`。部署前请在 `.env` 中配置上游 API Key 和 `IRIS_API_KEYS`，避免网关在公网环境下无认证暴露。
 
 ## 外部依赖
 
