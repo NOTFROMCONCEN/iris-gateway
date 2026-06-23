@@ -118,6 +118,14 @@ Invoke-RestMethod http://localhost:8000/health
 Invoke-RestMethod http://localhost:8000/ready
 ```
 
+后台控制台位于：
+
+```text
+http://localhost:8000/admin
+```
+
+后台可查看运行状态、模型路由、统一工具，并通过“系统配置”读写本地 `.env`。保存上游 API Key、Base URL、模型路由、MCP 工具等配置后，需要重启服务才会生效。敏感字段在读取时会脱敏，留空保存表示保持原值。
+
 ### Docker 启动
 
 Docker 配置位于 `deploy/` 目录：

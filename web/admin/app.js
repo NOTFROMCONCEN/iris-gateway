@@ -1,5 +1,6 @@
 const state = {
   config: null,
+  adminSettings: null,
   apiKey: window.localStorage.getItem("iris_admin_api_key") || "",
 };
 
@@ -260,6 +261,117 @@ function renderTools(data) {
   `).join("");
 }
 
+function formatJsonField(value) {
+  if (!value) return "";
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2);
+  } catch (error) {
+    return value;
+  }
+}
+
+function configFields() {
+  return Array.from(document.querySelectorAll("[data-config-key]"));
+}
+
+function renderAdminSettings(data) {
+  state.adminSettings = data;
+  configFields().forEach((field) => {
+    const key = field.dataset.configKey;
+    const item = data.values?.[key];
+    if (!item) return;
+
+    field.classList.remove("invalid-input");
+    if (item.sensitive) {
+      field.value = "";
+      field.placeholder = item.configured ? "已配置，留空保持不变" : "未配置";
+      return;
+    }
+
+    field.value = field.dataset.json !== undefined
+      ? formatJsonField(item.value)
+      : item.value;
+  });
+  setText(
+    "settingsStatus",
+    `${data.exists ? ".env 已加载" : ".env 不存在，保存时创建"}；保存后需要重启服务生效`,
+  );
+}
+
+function validateJsonFields() {
+  let valid = true;
+  configFields().forEach((field) => {
+    field.classList.remove("invalid-input");
+    if (field.dataset.json === undefined || !field.value.trim()) return;
+    try {
+      JSON.parse(field.value);
+    } catch (error) {
+      field.classList.add("invalid-input");
+      valid = false;
+    }
+  });
+  return valid;
+}
+
+async function loadAdminSettings() {
+  saveKey();
+  if (!state.apiKey) {
+    setText("settingsStatus", "请先在请求测试区域填写并保存 API Key。");
+    return;
+  }
+  setText("settingsStatus", "正在读取配置...");
+  try {
+    const data = await fetchJson("/admin/api/settings", {headers: authHeaders()});
+    renderAdminSettings(data);
+  } catch (error) {
+    setText("settingsStatus", `读取失败：${error.message}`);
+  }
+}
+
+function collectAdminSettings() {
+  const values = {};
+  configFields().forEach((field) => {
+    const key = field.dataset.configKey;
+    const item = state.adminSettings?.values?.[key];
+    const value = field.value.trim();
+    if (item?.sensitive && value === "") {
+      return;
+    }
+    values[key] = value;
+  });
+  return values;
+}
+
+async function saveAdminSettings() {
+  saveKey();
+  if (!state.apiKey) {
+    setText("settingsStatus", "请先在请求测试区域填写并保存 API Key。");
+    return;
+  }
+  if (!validateJsonFields()) {
+    setText("settingsStatus", "JSON 配置格式有误，请修正高亮字段。");
+    return;
+  }
+
+  setText("settingsStatus", "正在保存配置...");
+  try {
+    const data = await fetchJson("/admin/api/settings", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({values: collectAdminSettings()}),
+    });
+    renderAdminSettings(data.settings);
+    setText(
+      "settingsStatus",
+      data.restart_required
+        ? `已保存 ${data.updated.length} 项；重启服务后生效`
+        : "没有需要保存的配置",
+    );
+  } catch (error) {
+    setText("settingsStatus", `保存失败：${error.message}`);
+  }
+}
+
 async function refreshOverview() {
   const [health, ready, config] = await Promise.all([
     fetchJson("/health"),
@@ -357,6 +469,8 @@ function bindEvents() {
   $("refreshButton").addEventListener("click", () => refreshOverview().catch(console.error));
   $("loadModelsButton").addEventListener("click", loadModels);
   $("loadToolsButton").addEventListener("click", loadTools);
+  $("loadSettingsButton").addEventListener("click", loadAdminSettings);
+  $("saveSettingsButton").addEventListener("click", saveAdminSettings);
   $("saveKeyButton").addEventListener("click", saveKey);
   $("useSavedKeyButton").addEventListener("click", useSavedKeyForCompat);
   $("generateConfigButton").addEventListener("click", renderCompatConfig);

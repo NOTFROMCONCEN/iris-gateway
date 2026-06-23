@@ -90,6 +90,51 @@ class TestAdminUi:
         assert "openai_api_key" not in response.text
         assert "anthropic_api_key" not in response.text
 
+    def test_admin_settings_requires_api_key(self, client):
+        response = client.get("/admin/api/settings")
+
+        assert response.status_code == 401
+
+    def test_admin_settings_are_sanitized_and_writable(self, client, auth_headers, tmp_path):
+        env_path = tmp_path / ".env"
+        env_path.write_text(
+            "\n".join([
+                "IRIS_API_KEYS=secret-local-key",
+                "OPENAI_API_KEY=sk-live-secret",
+                "OPENAI_BASE_URL=https://old.example.test",
+            ]),
+            encoding="utf-8",
+        )
+        client.app.state.admin_env_path = env_path
+
+        response = client.get("/admin/api/settings", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["values"]["OPENAI_API_KEY"]["configured"] is True
+        assert data["values"]["OPENAI_API_KEY"]["value"] == ""
+        assert "sk-live-secret" not in response.text
+
+        save_response = client.post(
+            "/admin/api/settings",
+            headers=auth_headers,
+            json={
+                "values": {
+                    "OPENAI_BASE_URL": "https://new.example.test",
+                    "MODEL_PROVIDERS": "{\"gpt-4o\":\"openai\"}",
+                    "OPENAI_API_KEY": "",
+                }
+            },
+        )
+
+        assert save_response.status_code == 200
+        saved = env_path.read_text(encoding="utf-8")
+        assert "OPENAI_BASE_URL=https://new.example.test" in saved
+        assert "MODEL_PROVIDERS={\"gpt-4o\":\"openai\"}" in saved
+        assert "OPENAI_API_KEY=sk-live-secret" in saved
+
+        delattr(client.app.state, "admin_env_path")
+
 
 class TestP6Endpoints:
     """测试 P6 统一工具、SKILL 和记忆视图端点"""

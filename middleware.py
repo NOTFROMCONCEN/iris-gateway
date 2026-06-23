@@ -25,13 +25,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/health",
             "/ready",
             "/admin",
+            "/admin/styles.css",
+            "/admin/app.js",
+            "/admin/api/config",
             "/",
             "/docs",
             "/openapi.json",
             "/redoc",
         }
         # 前缀匹配的公开路径（静态资源等）
-        self.public_prefixes: tuple = ("/admin/", "/docs/", "/redoc/", "/static/")
+        self.public_prefixes: tuple = ("/docs/", "/redoc/", "/static/")
 
     def _is_public_path(self, path: str) -> bool:
         """检查路径是否为公开路由"""

@@ -20,6 +20,7 @@
           <a href="#overview">概览</a>
           <a href="#models">模型</a>
           <a href="#tools">工具</a>
+          <a href="#admin-settings">系统配置</a>
           <a href="#compat">兼容配置</a>
           <a href="#tester">请求测试</a>
           <a href="#settings">配置</a>
@@ -98,6 +99,121 @@
               <div><dt>MCP 代理</dt><dd id="mcpToolCount">...</dd></div>
               <div><dt>记忆视图</dt><dd id="memoryView">...</dd></div>
             </dl>
+          </div>
+        </section>
+
+        <section id="admin-settings" class="section">
+          <div class="section-title">
+            <h2>系统配置</h2>
+            <span id="settingsStatus">填写 API Key 后读取和保存 .env 配置</span>
+          </div>
+          <div class="actions compact-actions">
+            <button id="loadSettingsButton" type="button">读取配置</button>
+            <button id="saveSettingsButton" type="button">保存配置</button>
+          </div>
+          <div class="settings-grid">
+            <div class="form-panel">
+              <h3>网关</h3>
+              <div class="admin-form">
+                <label>
+                  <span>IRIS_API_KEYS</span>
+                  <input data-config-key="IRIS_API_KEYS" type="password" autocomplete="off" placeholder="留空保持不变">
+                </label>
+                <label>
+                  <span>CORS_ORIGINS</span>
+                  <input data-config-key="CORS_ORIGINS" type="text" placeholder="*">
+                </label>
+                <label>
+                  <span>IRIS_ENVIRONMENT</span>
+                  <select data-config-key="IRIS_ENVIRONMENT">
+                    <option value="development">development</option>
+                    <option value="production">production</option>
+                  </select>
+                </label>
+                <label>
+                  <span>IRIS_PORT</span>
+                  <input data-config-key="IRIS_PORT" type="number" min="1" max="65535">
+                </label>
+              </div>
+            </div>
+
+            <div class="form-panel">
+              <h3>上游 Provider</h3>
+              <div class="admin-form">
+                <label>
+                  <span>OPENAI_API_KEY</span>
+                  <input data-config-key="OPENAI_API_KEY" type="password" autocomplete="off" placeholder="留空保持不变">
+                </label>
+                <label>
+                  <span>OPENAI_BASE_URL</span>
+                  <input data-config-key="OPENAI_BASE_URL" type="text" placeholder="https://api.openai.com">
+                </label>
+                <label>
+                  <span>ANTHROPIC_API_KEY</span>
+                  <input data-config-key="ANTHROPIC_API_KEY" type="password" autocomplete="off" placeholder="留空保持不变">
+                </label>
+                <label>
+                  <span>ANTHROPIC_BASE_URL</span>
+                  <input data-config-key="ANTHROPIC_BASE_URL" type="text" placeholder="https://api.anthropic.com">
+                </label>
+                <label>
+                  <span>ANTHROPIC_AUTH_HEADER</span>
+                  <input data-config-key="ANTHROPIC_AUTH_HEADER" type="text" placeholder="x-api-key">
+                </label>
+                <label>
+                  <span>OPENAI_ORGANIZATION</span>
+                  <input data-config-key="OPENAI_ORGANIZATION" type="text">
+                </label>
+              </div>
+            </div>
+
+            <div class="form-panel wide-panel">
+              <h3>模型路由</h3>
+              <div class="admin-form textareas">
+                <label>
+                  <span>MODEL_PROVIDERS</span>
+                  <textarea data-config-key="MODEL_PROVIDERS" data-json rows="7" spellcheck="false"></textarea>
+                </label>
+                <label>
+                  <span>MODEL_ALIASES</span>
+                  <textarea data-config-key="MODEL_ALIASES" data-json rows="7" spellcheck="false"></textarea>
+                </label>
+                <label class="wide">
+                  <span>AVAILABLE_MODELS</span>
+                  <textarea data-config-key="AVAILABLE_MODELS" data-json rows="8" spellcheck="false"></textarea>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-panel wide-panel">
+              <h3>记忆 / 工具 / SKILL</h3>
+              <div class="admin-form textareas">
+                <label>
+                  <span>MEMORY_BACKEND</span>
+                  <select data-config-key="MEMORY_BACKEND">
+                    <option value="sqlite">sqlite</option>
+                    <option value="ombre">ombre</option>
+                    <option value="none">none</option>
+                  </select>
+                </label>
+                <label>
+                  <span>MEMORY_DB_PATH</span>
+                  <input data-config-key="MEMORY_DB_PATH" type="text">
+                </label>
+                <label>
+                  <span>SKILLS_CONFIG_DIR</span>
+                  <input data-config-key="SKILLS_CONFIG_DIR" type="text">
+                </label>
+                <label>
+                  <span>PERSONA_CONFIG_DIR</span>
+                  <input data-config-key="PERSONA_CONFIG_DIR" type="text">
+                </label>
+                <label class="wide">
+                  <span>MCP_TOOLS</span>
+                  <textarea data-config-key="MCP_TOOLS" data-json rows="8" spellcheck="false"></textarea>
+                </label>
+              </div>
+            </div>
           </div>
         </section>
 

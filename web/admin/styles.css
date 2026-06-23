@@ -159,6 +159,7 @@ nav a:hover {
 
 h1,
 h2,
+h3,
 p {
   margin: 0;
 }
@@ -169,6 +170,11 @@ h1 {
 
 h2 {
   font-size: 18px;
+}
+
+h3 {
+  font-size: 16px;
+  margin-bottom: 14px;
 }
 
 .topbar p,
@@ -285,6 +291,34 @@ small,
   gap: 14px;
 }
 
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.form-panel {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 16px;
+}
+
+.wide-panel {
+  grid-column: 1 / -1;
+}
+
+.admin-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-form.textareas {
+  align-items: start;
+}
+
 .config-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -333,6 +367,17 @@ label span {
   white-space: pre-wrap;
 }
 
+textarea[data-json] {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.invalid-input {
+  border-color: var(--bad);
+  box-shadow: 0 0 0 2px rgba(173, 48, 48, 0.12);
+}
+
 .kv {
   display: grid;
   gap: 10px;
@@ -359,6 +404,8 @@ label span {
 @media (max-width: 900px) {
   .nav-inner,
   .config-layout,
+  .settings-grid,
+  .admin-form,
   .config-form,
   .status-grid,
   .two-column,
