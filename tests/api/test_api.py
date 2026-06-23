@@ -83,8 +83,71 @@ class TestAdminUi:
         data = response.json()
         assert data["auth_required"] is True
         assert "models" in data
+        assert data["p6"]["tools"] >= 2
+        assert data["endpoints"]["tools"] == "/v1/tools"
         assert "openai_api_key" not in response.text
         assert "anthropic_api_key" not in response.text
+
+
+class TestP6Endpoints:
+    """测试 P6 统一工具、SKILL 和记忆视图端点"""
+
+    def test_list_tools_native_and_openai(self, client, auth_headers):
+        native = client.get("/v1/tools", headers=auth_headers)
+        openai = client.get("/v1/tools?format=openai", headers=auth_headers)
+
+        assert native.status_code == 200
+        assert openai.status_code == 200
+        assert any(tool["name"] == "iris.memory.recall" for tool in native.json()["tools"])
+        assert any(
+            tool["function"]["name"] == "skill.session_brief"
+            for tool in openai.json()["tools"]
+        )
+
+    def test_run_skill(self, client, auth_headers):
+        response = client.post(
+            "/v1/skills/session_brief/run",
+            headers=auth_headers,
+            json={
+                "inputs": {
+                    "session_id": "sess-test",
+                    "context": "User asked about P6.",
+                    "next_step": "Implement unified tools.",
+                }
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["skill_id"] == "session_brief"
+        assert "sess-test" in data["rendered_prompt"]
+
+    def test_call_skill_as_tool(self, client, auth_headers):
+        response = client.post(
+            "/v1/tools/skill.session_brief/call",
+            headers=auth_headers,
+            json={
+                "arguments": {
+                    "session_id": "sess-tool",
+                    "context": "Shared context.",
+                    "next_step": "Continue.",
+                }
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["result"]["skill_id"] == "session_brief"
+
+    def test_memory_session_view(self, client, auth_headers):
+        response = client.get(
+            "/v1/memory/sessions/sess-empty?persona_id=default&limit=5",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["session_id"] == "sess-empty"
+        assert "messages" in data
 
 
 class TestOpenAIEndpoints:

@@ -23,6 +23,7 @@ Continue (OpenAI协议)    ──┤      ↑
 - **上游伪装**：模拟 Claude Code 等工具的请求特征，绕过调用源限制
 - **感知分析**：基于规则引擎的情绪、意图、关键词分析
 - **流式响应**：完整支持 SSE 流式代理 OpenAI 和 Anthropic 的 streaming
+- **统一工具面**：通过 `/v1/tools` 暴露记忆工具、SKILL 工具和可配置 MCP HTTP 工具
 
 ## 当前实现状态
 
@@ -34,9 +35,11 @@ Continue (OpenAI协议)    ──┤      ↑
 | 上游伪装 | ✅ 已完成 | Claude Code / OpenAI 伪装，Headers 可配置 |
 | 感知分析 | ✅ 已完成 | 规则引擎：情绪/意图/关键词/紧急度 |
 | Provider 调度 | ✅ 已完成 | 重试 + 连接池 + 模型别名映射 |
-| MCP 工具代理 | 🔲 规划中 | 将 MCP 工具统一暴露给所有客户端 |
-| SKILL 系统 | 🔲 规划中 | 可复用的技能定义和执行框架 |
-| 跨协议多模态 | 🔲 规划中 | OpenAI ↔ Anthropic 图片/文件块互转 |
+| MCP 工具代理 | ✅ 已完成 | 配置化 MCP HTTP JSON-RPC 工具可通过 `/v1/tools` 统一列出和调用 |
+| SKILL 系统 | ✅ 已完成 | `config/skills/*.yaml` 技能定义自动加载，并暴露为 `skill.*` 工具 |
+| 跨协议多模态 | ✅ 已完成 | OpenAI `image_url` ↔ Anthropic `image` block 在跨 Provider 路由时互转 |
+| 跨端会话恢复 | ✅ 已完成 | OpenAI 请求字段和 Anthropic metadata 均可携带 `session_id` / `persona_id` |
+| 统一记忆视图 | ✅ 已完成 | `/v1/memory/sessions/{session_id}` 可查询共享记忆窗口和摘要 |
 
 ## 安装
 
@@ -83,6 +86,8 @@ ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
 | `OPENAI_API_KEY` | OpenAI 或 OpenAI 兼容上游 API Key |
 | `ANTHROPIC_API_KEY` | Anthropic 或 Anthropic 兼容上游 API Key |
 | `MEMORY_BACKEND` | 记忆后端，默认 `sqlite`，也可使用 `ombre` 或 `none` |
+| `SKILLS_CONFIG_DIR` | SKILL YAML 目录，默认 `./config/skills` |
+| `MCP_TOOLS` | 配置化 MCP HTTP 工具映射，JSON 格式 |
 | `MODEL_ALIASES` | 客户端模型别名到真实模型名的 JSON 映射 |
 | `MODEL_PROVIDERS` | 真实模型名到 `openai` / `anthropic` provider 的 JSON 映射 |
 
@@ -217,6 +222,52 @@ Invoke-RestMethod http://localhost:8000/v1/models -Headers @{ Authorization = "B
 
 `/health` 只表示进程存活；`/ready` 会检查 Provider 和记忆组件状态。
 
+### 统一工具、SKILL 和记忆视图
+
+所有客户端都可以用同一套 API 读取和调用工具：
+
+```powershell
+$headers = @{ Authorization = "Bearer iris-key-1" }
+
+Invoke-RestMethod http://localhost:8000/v1/tools -Headers $headers
+Invoke-RestMethod "http://localhost:8000/v1/tools?format=openai" -Headers $headers
+Invoke-RestMethod "http://localhost:8000/v1/tools?format=anthropic" -Headers $headers
+```
+
+调用内置 SKILL 工具：
+
+```powershell
+$body = @{
+  arguments = @{
+    session_id = "sess-demo"
+    context = "用户正在从 opencode 切换到 Claude Code。"
+    next_step = "继续完成同一个任务。"
+  }
+} | ConvertTo-Json -Depth 10
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8000/v1/tools/skill.session_brief/call `
+  -Headers (@{ Authorization = "Bearer iris-key-1"; "Content-Type" = "application/json" }) `
+  -Body $body
+```
+
+查看共享会话记忆：
+
+```powershell
+Invoke-RestMethod `
+  "http://localhost:8000/v1/memory/sessions/sess-demo?persona_id=default&limit=20" `
+  -Headers $headers
+```
+
+配置 MCP HTTP JSON-RPC 工具时，在 `.env` 中提供 `MCP_TOOLS`：
+
+```env
+MCP_TOOLS={"search.web":{"url":"http://127.0.0.1:18080/mcp","remote_name":"web_search","description":"Search the web","input_schema":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}}}
+```
+
+网关调用该工具时会向配置的 `url` 发送 JSON-RPC `tools/call` 请求。
+
 ## 开发与测试
 
 ```powershell
@@ -240,6 +291,11 @@ npm --prefix scripts test
 | `GET /v1/models` | OpenAI | 模型列表 |
 | `POST /v1/messages` | Anthropic | Messages API（含流式） |
 | `GET /v1/models` | Anthropic | 模型列表 |
+| `GET /v1/tools` | Iris | 统一工具列表，支持 `format=native/openai/anthropic` |
+| `POST /v1/tools/{tool_name}/call` | Iris | 调用统一工具（记忆 / SKILL / MCP HTTP） |
+| `GET /v1/skills` | Iris | 查看已加载 SKILL |
+| `POST /v1/skills/{skill_id}/run` | Iris | 直接运行 SKILL |
+| `GET /v1/memory/sessions/{session_id}` | Iris | 查看跨端共享会话记忆 |
 | `GET /health` | - | 轻量存活检查，不访问上游 |
 | `GET /ready` | - | 就绪检查，包含 Provider 状态 |
 
@@ -262,6 +318,32 @@ response_guidelines:
   - "解释设计决策"
 ```
 
+## SKILL 配置
+
+在 `config/skills/` 下创建 YAML 文件即可注册技能。每个技能会自动暴露为 `skill.<id>` 工具。
+
+```yaml
+id: session_brief
+name: Session Brief
+description: Turn a shared Iris session into a compact handoff brief.
+input_schema:
+  type: object
+  properties:
+    session_id:
+      type: string
+    context:
+      type: string
+    next_step:
+      type: string
+  required:
+    - session_id
+    - context
+prompt_template: |
+  You are preparing a cross-client handoff for Iris session {{session_id}}.
+  Context: {{context}}
+  Next step: {{next_step}}
+```
+
 ## 外部依赖
 
 `external/ombre-brain/` 是本地外部仓库目录，已被 `.gitignore` 排除，不会随 Iris Gateway 提交。需要 Ombre-Brain 后端时，请单独 clone 或复制该仓库到此路径，并自行记录使用的版本。
@@ -274,12 +356,14 @@ iris-gateway/
 ├── bootstrap.py         # 应用启动引导（组件初始化）
 ├── middleware.py         # API Key 认证中间件
 ├── disguise.py           # 上游伪装层
-├── config/              # 配置管理 + 人格文件
+├── config/              # 配置管理 + 人格文件 + SKILL 文件
 ├── models/              # 数据模型 (OpenAI + Anthropic + 内部 + 异常)
 ├── api/                 # API 兼容路由
 ├── core/                # 核心处理 (协议转换、人格注入、感知分析)
 │   ├── persona/         # 人格加载器 + 注入器
-│   └── perception/      # 感知分析器
+│   ├── perception/      # 感知分析器
+│   ├── skills/          # SKILL 加载与执行
+│   └── tools/           # 统一工具注册与 MCP HTTP 代理
 ├── memory/              # 记忆管理
 │   └── backends/        # 存储后端 (SQLite, Ombre-Brain)
 ├── providers/           # 上游 Provider (OpenAI, Anthropic, 调度器)
@@ -301,6 +385,11 @@ API 兼容层 (认证 + 路由)
 Provider 调度器
     ↓ 伪装层
 上游 AI API (Kimi / OpenAI / Anthropic)
+
+统一工具面 (/v1/tools)
+    ├─ 记忆工具 iris.memory.recall
+    ├─ SKILL 工具 skill.*
+    └─ MCP HTTP JSON-RPC 工具
 ```
 
 ## 许可

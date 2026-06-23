@@ -13,6 +13,8 @@ from core.protocol_converter import ProtocolConverter
 from core.persona.loader import PersonaLoader
 from core.perception.analyzer import PerceptionAnalyzer
 from core.processor import CoreProcessor
+from core.skills.registry import SkillRegistry
+from core.tools.registry import ToolRegistry
 from providers.dispatcher import ProviderDispatcher
 from disguise import ClaudeCodeDisguise, OpenAIDisguise, ClaudeCodeDisguiseConfig, OpenAIDisguiseConfig
 from memory.backends.sqlite_backend import SQLiteMemoryBackend
@@ -71,6 +73,13 @@ def init_persona_loader() -> PersonaLoader:
     personas = loader.list_personas()
     logger.info(f"Personas loaded: {[p['name'] for p in personas]}")
     return loader
+
+
+def init_skill_registry() -> SkillRegistry:
+    """初始化 SKILL 注册表。"""
+    registry = SkillRegistry(config_dir=settings.skills_config_dir)
+    logger.info(f"Skills loaded: {[skill.id for skill in registry.list_skills()]}")
+    return registry
 
 
 def init_memory_manager() -> MemoryManager | None:
@@ -199,6 +208,7 @@ def bootstrap(app):
 
     app.state.converter = init_converter()
     app.state.persona_loader = init_persona_loader()
+    app.state.skill_registry = init_skill_registry()
     app.state.memory_manager = init_memory_manager()
     app.state.perception_analyzer = init_perception_analyzer()
     app.state.dispatcher = init_dispatcher()
@@ -208,6 +218,11 @@ def bootstrap(app):
         persona_loader=app.state.persona_loader,
         memory_manager=app.state.memory_manager,
         perception_analyzer=app.state.perception_analyzer,
+    )
+    app.state.tool_registry = ToolRegistry(
+        skill_registry=app.state.skill_registry,
+        memory_manager=app.state.memory_manager,
+        mcp_tools=settings.mcp_tools,
     )
 
     app.state.claude_disguise, app.state.openai_disguise = init_disguise()

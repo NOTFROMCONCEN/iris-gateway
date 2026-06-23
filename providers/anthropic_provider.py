@@ -12,6 +12,7 @@ from typing import AsyncIterator, Optional, Dict, Any, List
 import httpx
 
 from providers.base import BaseProvider
+from core.protocol_converter import ProtocolConverter
 from models.schemas import (
     ChatRequest, ChatResponse, StreamChunk,
     Message, MessageRole, ProviderType,
@@ -69,6 +70,10 @@ class AnthropicProvider(BaseProvider):
                 content = msg.content
                 if msg.metadata and msg.metadata.get("anthropic_content"):
                     content = msg.metadata["anthropic_content"]
+                elif msg.metadata and msg.metadata.get("openai_content"):
+                    content = ProtocolConverter.openai_content_to_anthropic_blocks(
+                        msg.metadata["openai_content"]
+                    ) or msg.content
                 messages.append({
                     "role": "user" if msg.role == MessageRole.USER else "assistant",
                     "content": content,
@@ -78,6 +83,10 @@ class AnthropicProvider(BaseProvider):
                 content = msg.content
                 if msg.metadata and msg.metadata.get("anthropic_content"):
                     content = msg.metadata["anthropic_content"]
+                elif msg.metadata and msg.metadata.get("openai_content"):
+                    content = ProtocolConverter.openai_content_to_anthropic_blocks(
+                        msg.metadata["openai_content"]
+                    ) or msg.content
                 messages.append({
                     "role": "user",
                     "content": content,

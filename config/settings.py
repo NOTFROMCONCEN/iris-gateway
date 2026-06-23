@@ -2,7 +2,7 @@
 
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator
-from typing import List, Optional, Dict, Literal
+from typing import Any, List, Optional, Dict, Literal
 
 
 class Settings(BaseSettings):
@@ -58,6 +58,10 @@ class Settings(BaseSettings):
 
     # === 人格配置 ===
     persona_config_dir: str = "./config/personas"
+
+    # === P6: 工具 / SKILL / MCP 代理 ===
+    skills_config_dir: str = "./config/skills"
+    mcp_tools: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
     # === 伪装配置 (Claude Code) ===
     claude_disguise_enabled: bool = False

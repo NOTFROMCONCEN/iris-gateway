@@ -60,8 +60,8 @@
 
 > 设计目标：单用户在不同 AI 客户端之间统一调用 AI，达成跨端统一记忆、MCP、SKILL。
 
-- [ ] **MCP 工具代理**：将 MCP (Model Context Protocol) 工具统一注册到网关，无论客户端使用 OpenAI 还是 Anthropic 协议，都能调用同一套工具。
-- [ ] **SKILL 系统**：可复用的技能定义和执行框架，跨客户端共享技能配置和执行结果。
-- [ ] **跨协议多模态转换**：OpenAI `image_url` ↔ Anthropic `image` block 互转，确保图片/文件在所有客户端都能正确传递。
-- [ ] **跨端会话恢复**：通过固定 session_id 或客户端标识，在不同客户端之间恢复同一会话上下文。
-- [ ] **统一记忆视图**：所有客户端共享同一记忆空间，在 Claude Code 中聊过的内容 opencode 也能回忆。
+- [x] **MCP 工具代理**：将 MCP (Model Context Protocol) 工具统一注册到网关，无论客户端使用 OpenAI 还是 Anthropic 协议，都能调用同一套工具。
+- [x] **SKILL 系统**：可复用的技能定义和执行框架，跨客户端共享技能配置和执行结果。
+- [x] **跨协议多模态转换**：OpenAI `image_url` ↔ Anthropic `image` block 互转，确保图片/文件在所有客户端都能正确传递。
+- [x] **跨端会话恢复**：通过固定 session_id 或客户端标识，在不同客户端之间恢复同一会话上下文。
+- [x] **统一记忆视图**：所有客户端共享同一记忆空间，在 Claude Code 中聊过的内容 opencode 也能回忆。

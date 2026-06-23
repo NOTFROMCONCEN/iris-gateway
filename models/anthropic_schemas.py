@@ -98,6 +98,8 @@ class AnthropicMessageRequest(BaseModel):
     tools: Optional[List[AnthropicTool]] = None
     tool_choice: Optional[Union[Literal["auto", "any", "none"], Dict[str, Any]]] = None
     thinking: Optional[AnthropicThinkingConfig] = None
+    session_id: Optional[str] = None
+    persona_id: Optional[str] = None
 
 
 # === 响应模型 ===

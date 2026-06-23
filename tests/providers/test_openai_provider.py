@@ -76,3 +76,34 @@ def test_openai_provider_builds_request_with_preserved_multimodal_content():
     body = provider._build_request_body(request)
 
     assert body["messages"][0]["content"] == content
+
+
+def test_openai_provider_converts_anthropic_image_blocks():
+    provider = OpenAIProvider(api_key="test-key")
+    anthropic_content = [
+        {"type": "text", "text": "Describe this image."},
+        {
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/png",
+                "data": "abc",
+            },
+        },
+    ]
+    request = ChatRequest(
+        provider=ProviderType.OPENAI,
+        model="gpt-4o",
+        messages=[
+            Message(
+                role=MessageRole.USER,
+                content="Describe this image.",
+                metadata={"anthropic_content": anthropic_content},
+            )
+        ],
+    )
+
+    body = provider._build_request_body(request)
+
+    assert body["messages"][0]["content"][1]["type"] == "image_url"
+    assert body["messages"][0]["content"][1]["image_url"]["url"].startswith("data:image/png")

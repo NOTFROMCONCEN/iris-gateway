@@ -11,6 +11,7 @@ from typing import AsyncIterator, Optional, Dict, Any, List
 import httpx
 
 from providers.base import BaseProvider
+from core.protocol_converter import ProtocolConverter
 from models.schemas import (
     ChatRequest, ChatResponse, StreamChunk,
     Message, MessageRole, ProviderType,
@@ -61,6 +62,10 @@ class OpenAIProvider(BaseProvider):
             content = msg.content
             if msg.metadata and msg.metadata.get("openai_content"):
                 content = msg.metadata["openai_content"]
+            elif msg.metadata and msg.metadata.get("anthropic_content"):
+                content = ProtocolConverter.anthropic_content_to_openai_blocks(
+                    msg.metadata["anthropic_content"]
+                ) or msg.content
             msg_dict: Dict[str, Any] = {
                 "role": msg.role.value,
                 "content": content,

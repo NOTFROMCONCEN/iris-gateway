@@ -14,7 +14,7 @@ from config.settings import settings
 from bootstrap import bootstrap, shutdown
 from models.exceptions import IrisGatewayError
 from middleware import AuthMiddleware
-from api import openai, anthropic, health, ui
+from api import openai, anthropic, health, tools, ui
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,7 @@ async def iris_error_handler(request, exc: IrisGatewayError):
 app.include_router(health.router)
 app.include_router(openai.router)
 app.include_router(anthropic.router)
+app.include_router(tools.router)
 app.include_router(ui.router)
 
 

@@ -93,6 +93,8 @@ class ProtocolConverter:
             top_p=req.top_p,
             stream=req.stream,
             tools=req.tools,
+            session_id=req.session_id,
+            persona_id=req.persona_id,
             metadata=metadata,
         )
 
@@ -135,6 +137,12 @@ class ProtocolConverter:
         if req.thinking:
             metadata["thinking"] = req.thinking.model_dump()
 
+        session_id = req.session_id
+        persona_id = req.persona_id
+        if req.metadata:
+            session_id = session_id or req.metadata.get("session_id")
+            persona_id = persona_id or req.metadata.get("persona_id")
+
         return ChatRequest(
             messages=messages,
             model=req.model,
@@ -144,6 +152,8 @@ class ProtocolConverter:
             top_p=req.top_p,
             stream=req.stream,
             tools=ProtocolConverter._convert_anthropic_tools(req.tools),
+            session_id=session_id,
+            persona_id=persona_id,
             metadata=metadata,
         )
 
@@ -400,6 +410,93 @@ class ProtocolConverter:
                 blocks.append({"type": "text", "text": block})
 
         return blocks or None
+
+    @staticmethod
+    def openai_content_to_anthropic_blocks(content) -> Optional[List[Dict[str, Any]]]:
+        """Convert OpenAI text/image_url blocks to Anthropic content blocks."""
+        if not isinstance(content, list):
+            return None
+
+        blocks = []
+        for block in content:
+            if isinstance(block, str):
+                blocks.append({"type": "text", "text": block})
+                continue
+            if not isinstance(block, dict):
+                continue
+
+            block_type = block.get("type")
+            if block_type == "text":
+                blocks.append({"type": "text", "text": block.get("text", "")})
+            elif block_type == "image_url":
+                image_url = block.get("image_url") or {}
+                url = image_url.get("url", "")
+                blocks.append({
+                    "type": "image",
+                    "source": ProtocolConverter._image_url_to_anthropic_source(url),
+                })
+            else:
+                blocks.append(block)
+
+        return blocks or None
+
+    @staticmethod
+    def anthropic_content_to_openai_blocks(content) -> Optional[List[Dict[str, Any]]]:
+        """Convert Anthropic text/image blocks to OpenAI content blocks."""
+        if not isinstance(content, list):
+            return None
+
+        blocks = []
+        for block in content:
+            if isinstance(block, BaseModel):
+                block = block.model_dump(exclude_none=True)
+            if not isinstance(block, dict):
+                continue
+
+            block_type = block.get("type")
+            if block_type == "text":
+                blocks.append({"type": "text", "text": block.get("text", "")})
+            elif block_type == "image":
+                blocks.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": ProtocolConverter._anthropic_source_to_image_url(
+                            block.get("source") or {}
+                        )
+                    },
+                })
+            elif block_type == "tool_result":
+                blocks.append({"type": "text", "text": str(block.get("content", ""))})
+            elif block_type == "tool_use":
+                blocks.append({"type": "text", "text": f"[tool_use:{block.get('name', '')}]"})
+            else:
+                blocks.append(block)
+
+        return blocks or None
+
+    @staticmethod
+    def _image_url_to_anthropic_source(url: str) -> Dict[str, Any]:
+        """Convert an OpenAI image URL to an Anthropic image source."""
+        if url.startswith("data:") and ";base64," in url:
+            header, data = url.split(";base64,", 1)
+            media_type = header.removeprefix("data:") or "application/octet-stream"
+            return {
+                "type": "base64",
+                "media_type": media_type,
+                "data": data,
+            }
+        return {
+            "type": "url",
+            "url": url,
+        }
+
+    @staticmethod
+    def _anthropic_source_to_image_url(source: Dict[str, Any]) -> str:
+        """Convert an Anthropic image source to an OpenAI image_url URL."""
+        if source.get("type") == "base64":
+            media_type = source.get("media_type", "application/octet-stream")
+            return f"data:{media_type};base64,{source.get('data', '')}"
+        return source.get("url", "")
 
     @staticmethod
     def _extract_anthropic_system(system) -> str:

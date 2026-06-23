@@ -32,6 +32,10 @@ async def admin_asset(asset_name: str):
 @router.get("/admin/api/config", include_in_schema=False)
 async def admin_config(req: Request):
     """Return sanitized runtime configuration for the Web UI."""
+    skill_registry = getattr(req.app.state, "skill_registry", None)
+    tool_registry = getattr(req.app.state, "tool_registry", None)
+    skills = skill_registry.list_skills() if skill_registry else []
+    tools = tool_registry.list_tools() if tool_registry else []
     return JSONResponse(content={
         "version": "0.1.0",
         "environment": settings.iris_environment,
@@ -53,10 +57,20 @@ async def admin_config(req: Request):
             "providers": settings.model_providers,
             "default": settings.default_model,
         },
+        "p6": {
+            "skills": len(skills),
+            "tools": len(tools),
+            "mcp_tools": len(settings.mcp_tools),
+            "session_recovery": True,
+            "memory_view": bool(getattr(req.app.state, "memory_manager", None)),
+        },
         "endpoints": {
             "health": "/health",
             "ready": "/ready",
             "models": "/v1/models",
             "chat": "/v1/chat/completions",
+            "tools": "/v1/tools",
+            "skills": "/v1/skills",
+            "memory_session": "/v1/memory/sessions/{session_id}",
         },
     })

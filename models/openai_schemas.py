@@ -38,6 +38,8 @@ class OpenAIChatRequest(BaseModel):
     response_format: Optional[Dict[str, Any]] = None
     seed: Optional[int] = None
     reasoning_effort: Optional[Union[Literal["low", "medium", "high"], Dict[str, Any]]] = None
+    session_id: Optional[str] = None
+    persona_id: Optional[str] = None
 
 
 # === 响应模型 ===

@@ -52,6 +52,20 @@ class TestProtocolConverter:
         assert internal.metadata["max_completion_tokens"] == 256
         assert internal.metadata["logit_bias"] == {"42": -10}
 
+    def test_openai_to_internal_preserves_gateway_session_fields(self):
+        """测试 OpenAI 兼容请求可显式携带跨端会话字段"""
+        req = OpenAIChatRequest(
+            model="gpt-4o",
+            messages=[OpenAIMessage(role="user", content="Hello!")],
+            session_id="sess-shared",
+            persona_id="coder",
+        )
+
+        internal = ProtocolConverter.openai_to_internal(req)
+
+        assert internal.session_id == "sess-shared"
+        assert internal.persona_id == "coder"
+
     def test_openai_to_internal_preserves_multimodal_content_blocks(self):
         """测试 OpenAI 多模态内容块不会被静默丢弃"""
         content = [
@@ -114,6 +128,20 @@ class TestProtocolConverter:
         assert internal.messages[0].role == MessageRole.SYSTEM
         assert internal.messages[1].role == MessageRole.USER
         assert internal.provider == ProviderType.ANTHROPIC
+
+    def test_anthropic_to_internal_reads_session_from_metadata(self):
+        """测试 Anthropic 客户端可通过 metadata 恢复共享会话"""
+        req = AnthropicMessageRequest(
+            model="claude-sonnet-4-20250514",
+            messages=[AnthropicMessage(role="user", content="Hello Claude!")],
+            metadata={"session_id": "sess-shared", "persona_id": "coder"},
+            max_tokens=100,
+        )
+
+        internal = ProtocolConverter.anthropic_to_internal(req)
+
+        assert internal.session_id == "sess-shared"
+        assert internal.persona_id == "coder"
 
     def test_anthropic_to_internal_preserves_tool_blocks(self):
         """测试 Anthropic 工具内容块进入内部 metadata"""

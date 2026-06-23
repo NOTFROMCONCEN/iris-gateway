@@ -1,0 +1,25 @@
+id: session_brief
+name: Session Brief
+description: Turn a shared Iris session into a compact handoff brief.
+input_schema:
+  type: object
+  properties:
+    session_id:
+      type: string
+    context:
+      type: string
+    next_step:
+      type: string
+  required:
+    - session_id
+    - context
+prompt_template: |
+  You are preparing a cross-client handoff for Iris session {{session_id}}.
+
+  Context:
+  {{context}}
+
+  Next step:
+  {{next_step}}
+
+  Return a concise brief with decisions, open questions, and the next action.

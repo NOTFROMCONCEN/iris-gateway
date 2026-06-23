@@ -93,6 +93,10 @@ function renderConfig(config) {
   setText("environment", config.environment);
   setText("corsOrigins", config.cors_origins.join(", ") || "未配置");
   setText("defaultModel", config.models.default);
+  setText("toolCount", String(config.p6.tools));
+  setText("skillCount", String(config.p6.skills));
+  setText("mcpToolCount", String(config.p6.mcp_tools));
+  setText("memoryView", config.p6.memory_view ? "启用" : "关闭");
   $("modelInput").value = config.models.default || $("modelInput").value;
   renderRoutes(config);
 }
@@ -122,6 +126,25 @@ function renderModels(data) {
   });
 }
 
+function renderTools(data) {
+  const tools = data?.tools || [];
+  const toolList = $("toolList");
+  if (!tools.length) {
+    toolList.innerHTML = '<div class="empty">没有返回工具。</div>';
+    return;
+  }
+
+  toolList.innerHTML = tools.map((tool) => `
+    <div class="model-item">
+      <div>
+        <strong>${tool.name}</strong>
+        <small>${tool.description || "无描述"}</small>
+      </div>
+      <span class="pill">${tool.source || "tool"}</span>
+    </div>
+  `).join("");
+}
+
 async function refreshOverview() {
   const [health, ready, config] = await Promise.all([
     fetchJson("/health"),
@@ -148,6 +171,17 @@ async function loadModels() {
     renderModels(data);
   } catch (error) {
     modelList.innerHTML = `<div class="empty">读取失败：${error.message}</div>`;
+  }
+}
+
+async function loadTools() {
+  const toolList = $("toolList");
+  toolList.innerHTML = '<div class="empty">正在读取工具...</div>';
+  try {
+    const data = await fetchJson("/v1/tools", {headers: authHeaders()});
+    renderTools(data);
+  } catch (error) {
+    toolList.innerHTML = `<div class="empty">读取失败：${error.message}</div>`;
   }
 }
 
@@ -194,6 +228,7 @@ function bindEvents() {
   $("apiKeyInput").value = state.apiKey;
   $("refreshButton").addEventListener("click", () => refreshOverview().catch(console.error));
   $("loadModelsButton").addEventListener("click", loadModels);
+  $("loadToolsButton").addEventListener("click", loadTools);
   $("saveKeyButton").addEventListener("click", saveKey);
   $("sendButton").addEventListener("click", async () => {
     saveKey();

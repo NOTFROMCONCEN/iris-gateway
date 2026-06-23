@@ -19,6 +19,7 @@
         <nav>
           <a href="#overview">概览</a>
           <a href="#models">模型</a>
+          <a href="#tools">工具</a>
           <a href="#tester">请求测试</a>
           <a href="#settings">配置</a>
         </nav>
@@ -74,6 +75,26 @@
           <div class="panel">
             <h2>模型路由</h2>
             <div id="routeList" class="route-list"></div>
+          </div>
+        </section>
+
+        <section id="tools" class="section two-column">
+          <div class="panel">
+            <div class="section-title">
+              <h2>统一工具</h2>
+              <button id="loadToolsButton" type="button">读取工具</button>
+            </div>
+            <div id="toolList" class="list empty">输入 API Key 后读取工具。</div>
+          </div>
+
+          <div class="panel">
+            <h2>P6 能力</h2>
+            <dl class="kv">
+              <div><dt>工具数</dt><dd id="toolCount">...</dd></div>
+              <div><dt>Skill 数</dt><dd id="skillCount">...</dd></div>
+              <div><dt>MCP 代理</dt><dd id="mcpToolCount">...</dd></div>
+              <div><dt>记忆视图</dt><dd id="memoryView">...</dd></div>
+            </dl>
           </div>
         </section>
 

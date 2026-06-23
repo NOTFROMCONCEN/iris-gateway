@@ -119,6 +119,19 @@ class MemoryManager:
 
         return False
 
+    async def inspect_session(
+        self,
+        session_id: str,
+        persona_id: str,
+        limit: int = 20,
+    ) -> Tuple[List[MemoryEntry], List[MemorySummary]]:
+        """读取会话记忆视图，供跨端恢复和后台/API 查询使用。"""
+        messages_task = self.backend.get_session_messages(
+            session_id, persona_id, limit=limit
+        )
+        summaries_task = self.backend.get_summaries(session_id, persona_id)
+        return await asyncio.gather(messages_task, summaries_task)
+
     def _build_summary_prompt(self, summaries: List[MemorySummary]) -> str:
         """构建记忆摘要提示"""
         parts = ["\n# 之前的对话记忆\n"]

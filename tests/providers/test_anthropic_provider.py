@@ -55,3 +55,27 @@ def test_anthropic_provider_parses_tool_use_response():
 
     assert response.message.metadata["anthropic_content"] == [tool_use]
     assert response.message.metadata["stop_reason"] == "tool_use"
+
+
+def test_anthropic_provider_converts_openai_image_blocks():
+    provider = AnthropicProvider(api_key="test-key")
+    openai_content = [
+        {"type": "text", "text": "Describe this image."},
+        {"type": "image_url", "image_url": {"url": "data:image/png;base64,abc"}},
+    ]
+    request = ChatRequest(
+        provider=ProviderType.ANTHROPIC,
+        model="claude-sonnet-4-20250514",
+        messages=[
+            Message(
+                role=MessageRole.USER,
+                content="Describe this image.",
+                metadata={"openai_content": openai_content},
+            )
+        ],
+    )
+
+    body = provider._build_request_body(request)
+
+    assert body["messages"][0]["content"][1]["type"] == "image"
+    assert body["messages"][0]["content"][1]["source"]["media_type"] == "image/png"
