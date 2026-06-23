@@ -7,7 +7,8 @@
 import logging
 from typing import Optional, List, Set
 
-from fastapi import Request, HTTPException
+from fastapi import Request
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger(__name__)
@@ -73,11 +74,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
         api_key = self._extract_api_key(request)
         if not api_key:
             logger.warning(f"Missing API Key for {request.method} {path}")
-            raise HTTPException(status_code=401, detail="Missing API Key")
+            return JSONResponse(status_code=401, content={"detail": "Missing API Key"})
 
         if api_key not in self.api_keys:
             logger.warning(f"Invalid API Key for {request.method} {path}")
-            raise HTTPException(status_code=401, detail="Invalid API Key")
+            return JSONResponse(status_code=401, content={"detail": "Invalid API Key"})
 
         # 将 API Key 附加到请求状态
         request.state.api_key = api_key

@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="/admin/styles.css">
   </head>
   <body>
-    <div class="shell">
-      <aside class="sidebar" aria-label="后台导航">
+    <header class="floating-menu">
+      <div class="nav-inner">
         <div class="brand">
           <span class="brand-mark">IG</span>
           <div>
@@ -16,22 +16,25 @@
             <span>Admin Console</span>
           </div>
         </div>
-        <nav>
+        <nav aria-label="后台导航">
           <a href="#overview">概览</a>
           <a href="#models">模型</a>
           <a href="#tools">工具</a>
+          <a href="#compat">兼容配置</a>
           <a href="#tester">请求测试</a>
           <a href="#settings">配置</a>
         </nav>
-      </aside>
+        <button id="refreshButton" type="button">刷新</button>
+      </div>
+    </header>
 
+    <div class="shell">
       <main class="workspace">
         <header class="topbar">
           <div>
             <h1>后台控制台</h1>
-            <p>查看网关状态、模型路由和基础请求链路。</p>
+            <p>查看网关状态、模型路由、统一工具和客户端兼容配置。</p>
           </div>
-          <button id="refreshButton" type="button">刷新</button>
         </header>
 
         <section id="overview" class="section">
@@ -95,6 +98,59 @@
               <div><dt>MCP 代理</dt><dd id="mcpToolCount">...</dd></div>
               <div><dt>记忆视图</dt><dd id="memoryView">...</dd></div>
             </dl>
+          </div>
+        </section>
+
+        <section id="compat" class="section">
+          <div class="section-title">
+            <h2>兼容配置</h2>
+            <span>生成常用客户端配置片段</span>
+          </div>
+          <div class="config-layout">
+            <div class="config-form">
+              <label>
+                <span>配置类型</span>
+                <select id="compatClient">
+                  <option value="opencode">opencode.json</option>
+                  <option value="cline">Cline 设置</option>
+                  <option value="continue">Continue config.json</option>
+                  <option value="claude">Claude Code 环境变量</option>
+                  <option value="env">Iris .env 片段</option>
+                  <option value="request">跨端会话请求体</option>
+                </select>
+              </label>
+              <label>
+                <span>网关地址</span>
+                <input id="compatBaseUrl" type="text" placeholder="http://localhost:8000">
+              </label>
+              <label>
+                <span>API Key</span>
+                <input id="compatApiKey" type="password" autocomplete="off" placeholder="iris-key-1">
+              </label>
+              <label>
+                <span>OpenAI 兼容模型</span>
+                <input id="compatOpenAIModel" type="text" value="kimi-k2">
+              </label>
+              <label>
+                <span>Anthropic 兼容模型</span>
+                <input id="compatAnthropicModel" type="text" value="kimi-for-coding">
+              </label>
+              <label>
+                <span>Session ID</span>
+                <input id="compatSessionId" type="text" value="iris-shared">
+              </label>
+              <label>
+                <span>Persona ID</span>
+                <input id="compatPersonaId" type="text" value="default">
+              </label>
+            </div>
+            <div class="config-output">
+              <div class="actions compact-actions">
+                <button id="useSavedKeyButton" type="button">使用已保存 Key</button>
+                <button id="generateConfigButton" type="button">生成配置</button>
+              </div>
+              <pre id="compatOutput" class="response-box">选择配置类型后生成...</pre>
+            </div>
           </div>
         </section>
 

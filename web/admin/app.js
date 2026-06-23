@@ -98,7 +98,122 @@ function renderConfig(config) {
   setText("mcpToolCount", String(config.p6.mcp_tools));
   setText("memoryView", config.p6.memory_view ? "启用" : "关闭");
   $("modelInput").value = config.models.default || $("modelInput").value;
+  hydrateCompatDefaults(config);
   renderRoutes(config);
+}
+
+function gatewayBaseUrl() {
+  return window.location.origin;
+}
+
+function hydrateCompatDefaults(config) {
+  const baseInput = $("compatBaseUrl");
+  if (!baseInput.value) {
+    baseInput.value = gatewayBaseUrl();
+  }
+  if (!$("compatApiKey").value && state.apiKey) {
+    $("compatApiKey").value = state.apiKey;
+  }
+  const openAIModel = Object.entries(config.models.providers || {})
+    .find(([, provider]) => provider === "openai")?.[0];
+  if (openAIModel) {
+    $("compatOpenAIModel").value = openAIModel;
+  }
+
+  const anthropicModel = Object.entries(config.models.providers || {})
+    .find(([, provider]) => provider === "anthropic")?.[0];
+  if (anthropicModel) {
+    $("compatAnthropicModel").value = anthropicModel;
+  }
+  renderCompatConfig();
+}
+
+function configInputs() {
+  const baseUrl = $("compatBaseUrl").value.trim().replace(/\/+$/, "") || gatewayBaseUrl();
+  const apiKey = $("compatApiKey").value.trim() || "iris-key-1";
+  return {
+    type: $("compatClient").value,
+    baseUrl,
+    openaiBaseUrl: `${baseUrl}/v1`,
+    apiKey,
+    openaiModel: $("compatOpenAIModel").value.trim() || "kimi-k2",
+    anthropicModel: $("compatAnthropicModel").value.trim() || "kimi-for-coding",
+    sessionId: $("compatSessionId").value.trim() || "iris-shared",
+    personaId: $("compatPersonaId").value.trim() || "default",
+  };
+}
+
+function renderCompatConfig() {
+  const cfg = configInputs();
+  const templates = {
+    opencode: {
+      $schema: "https://opencode.ai/config.json",
+      provider: {
+        "iris-gateway": {
+          npm: "@ai-sdk/openai-compatible",
+          name: "Iris Gateway",
+          options: {
+            baseURL: cfg.openaiBaseUrl,
+            apiKey: cfg.apiKey,
+          },
+          models: {
+            [cfg.openaiModel]: {name: cfg.openaiModel},
+            [cfg.anthropicModel]: {name: cfg.anthropicModel},
+          },
+        },
+      },
+    },
+    cline: {
+      "cline.apiProvider": "openai-compatible",
+      "cline.openAiCompatibleBaseUrl": cfg.openaiBaseUrl,
+      "cline.openAiCompatibleApiKey": cfg.apiKey,
+      "cline.openAiCompatibleModelId": cfg.openaiModel,
+    },
+    continue: {
+      models: [
+        {
+          title: "Iris Gateway",
+          provider: "openai",
+          model: cfg.openaiModel,
+          apiBase: cfg.openaiBaseUrl,
+          apiKey: cfg.apiKey,
+        },
+      ],
+    },
+    request: {
+      model: cfg.openaiModel,
+      session_id: cfg.sessionId,
+      persona_id: cfg.personaId,
+      messages: [
+        {
+          role: "user",
+          content: "继续这个跨端会话。",
+        },
+      ],
+    },
+  };
+
+  if (cfg.type === "claude") {
+    $("compatOutput").textContent = [
+      `$env:ANTHROPIC_BASE_URL = "${cfg.baseUrl}"`,
+      `$env:ANTHROPIC_API_KEY = "${cfg.apiKey}"`,
+      "claude",
+    ].join("\n");
+    return;
+  }
+
+  if (cfg.type === "env") {
+    $("compatOutput").textContent = [
+      `IRIS_API_KEYS=${cfg.apiKey}`,
+      `OPENAI_BASE_URL=${cfg.openaiBaseUrl}`,
+      `ANTHROPIC_BASE_URL=${cfg.baseUrl}`,
+      `MODEL_ALIASES={"coding":"${cfg.anthropicModel}","chat":"${cfg.openaiModel}"}`,
+      `MODEL_PROVIDERS={"${cfg.openaiModel}":"openai","${cfg.anthropicModel}":"anthropic"}`,
+    ].join("\n");
+    return;
+  }
+
+  $("compatOutput").textContent = JSON.stringify(templates[cfg.type], null, 2);
 }
 
 function renderModels(data) {
@@ -165,6 +280,10 @@ async function refreshOverview() {
 
 async function loadModels() {
   const modelList = $("modelList");
+  if (!state.apiKey) {
+    modelList.innerHTML = '<div class="empty">请先填写并保存 API Key。</div>';
+    return;
+  }
   modelList.innerHTML = '<div class="empty">正在读取模型...</div>';
   try {
     const data = await fetchJson("/v1/models", {headers: authHeaders()});
@@ -176,6 +295,10 @@ async function loadModels() {
 
 async function loadTools() {
   const toolList = $("toolList");
+  if (!state.apiKey) {
+    toolList.innerHTML = '<div class="empty">请先填写并保存 API Key。</div>';
+    return;
+  }
   toolList.innerHTML = '<div class="empty">正在读取工具...</div>';
   try {
     const data = await fetchJson("/v1/tools", {headers: authHeaders()});
@@ -224,12 +347,20 @@ function saveKey() {
   }
 }
 
+function useSavedKeyForCompat() {
+  $("compatApiKey").value = state.apiKey || $("apiKeyInput").value.trim();
+  renderCompatConfig();
+}
+
 function bindEvents() {
   $("apiKeyInput").value = state.apiKey;
   $("refreshButton").addEventListener("click", () => refreshOverview().catch(console.error));
   $("loadModelsButton").addEventListener("click", loadModels);
   $("loadToolsButton").addEventListener("click", loadTools);
   $("saveKeyButton").addEventListener("click", saveKey);
+  $("useSavedKeyButton").addEventListener("click", useSavedKeyForCompat);
+  $("generateConfigButton").addEventListener("click", renderCompatConfig);
+  $("compatClient").addEventListener("change", renderCompatConfig);
   $("sendButton").addEventListener("click", async () => {
     saveKey();
     await sendTest();

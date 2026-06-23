@@ -21,6 +21,7 @@
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
@@ -28,6 +29,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -47,6 +49,7 @@ button:hover {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -60,23 +63,32 @@ textarea {
   resize: vertical;
 }
 
-.shell {
-  display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-  min-height: 100vh;
+.floating-menu {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  margin: 12px auto 0;
+  width: min(1180px, calc(100% - 32px));
 }
 
-.sidebar {
+.nav-inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
   background: #16232e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
   color: white;
-  padding: 22px 18px;
+  padding: 10px 12px;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 28px;
+  min-width: 0;
 }
 
 .brand-mark {
@@ -102,11 +114,14 @@ textarea {
 }
 
 nav {
-  display: grid;
+  display: flex;
   gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 nav a {
+  flex: 0 0 auto;
   border-radius: 6px;
   color: #dbe5ed;
   padding: 10px 12px;
@@ -118,11 +133,17 @@ nav a:hover {
   color: white;
 }
 
+.shell {
+  min-height: 100vh;
+}
+
 .workspace {
   display: grid;
   align-content: start;
   gap: 18px;
-  padding: 24px;
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 24px 16px 32px;
 }
 
 .topbar {
@@ -130,6 +151,10 @@ nav a:hover {
   justify-content: space-between;
   gap: 16px;
   align-items: center;
+}
+
+.topbar > div {
+  min-width: 0;
 }
 
 h1,
@@ -151,6 +176,7 @@ h2 {
 small,
 .empty {
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .section,
@@ -253,6 +279,23 @@ small,
   gap: 14px;
 }
 
+.config-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.85fr) minmax(0, 1.15fr);
+  gap: 14px;
+}
+
+.config-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-content: start;
+}
+
+.config-output {
+  min-width: 0;
+}
+
 label {
   display: grid;
   gap: 7px;
@@ -272,6 +315,10 @@ label span {
   flex-wrap: wrap;
   gap: 10px;
   margin: 14px 0;
+}
+
+.compact-actions {
+  margin-top: 0;
 }
 
 .response-box {
@@ -310,22 +357,19 @@ label span {
 }
 
 @media (max-width: 900px) {
-  .shell {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    position: static;
-  }
-
-  nav {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
+  .nav-inner,
+  .config-layout,
+  .config-form,
   .status-grid,
   .two-column,
   .tester-grid {
     grid-template-columns: 1fr;
+  }
+
+  nav {
+    order: 3;
+    flex-wrap: wrap;
+    overflow-x: visible;
   }
 }
 
@@ -340,8 +384,24 @@ label span {
     flex-direction: column;
   }
 
+  .floating-menu {
+    top: 8px;
+    width: min(100% - 16px, 1180px);
+  }
+
   nav {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  nav a {
+    min-width: 0;
+    padding: 8px 6px;
+    text-align: center;
+  }
+
+  .topbar p {
+    max-width: 22em;
   }
 
   .kv div,

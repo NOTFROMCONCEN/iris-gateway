@@ -66,6 +66,8 @@ class TestAdminUi:
 
         assert response.status_code == 200
         assert "Iris Gateway Admin" in response.text
+        assert "floating-menu" in response.text
+        assert "兼容配置" in response.text
 
     def test_admin_assets(self, client):
         css_response = client.get("/admin/styles.css")
@@ -152,6 +154,13 @@ class TestP6Endpoints:
 
 class TestOpenAIEndpoints:
     """测试 OpenAI 兼容端点"""
+
+    def test_list_models_requires_api_key(self, client):
+        """认证开启时缺少 API Key 应返回 401，而不是中间件 500。"""
+        response = client.get("/v1/models")
+
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Missing API Key"
 
     def test_list_models(self, client, auth_headers):
         """测试模型列表"""
